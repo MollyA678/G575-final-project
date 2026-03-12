@@ -1,6 +1,6 @@
-# Team Name
+# Placeholder Name
 
-### Team Members
+### Molly Anderson & Ray Wang
 
 ### Final Proposal
 1. Persona/Scenario
