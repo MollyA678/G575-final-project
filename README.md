@@ -1,4 +1,4 @@
-# Placeholder Name
+# Placeholder Team
 
 ### Molly Anderson & Ray Wang
 
