@@ -187,7 +187,7 @@ historical and semantic relationships.
 
 ## Wireframe 1 — Global Diffusion View
 
-![Wireframe 1](./images/wireframe1.png)
+![Wireframe 1](./img/wireframe1.png)
 
 The first wireframe presents a global overview in which regions outside 
 the United States are shown as sources of place names. Arrows connect 
@@ -199,7 +199,7 @@ transitions in naming.
 
 ## Wireframe 2 — U.S. Diffusion View
 
-![Wireframe 2](./images/wireframe2.png)
+![Wireframe 2](./img/wireframe2.png)
 
 The second wireframe focuses on the United States and visualizes the 
 spatial distribution of place names. Points represent locations, and their 
@@ -211,7 +211,7 @@ areas.
 
 ## Wireframe 3 — Network View across Scale
 
-![Wireframe 3](./images/wireframe3.png)
+![Wireframe 3](./img/wireframe3.png)
 
 The third wireframe introduces a network-based representation. Each node 
 represents a place name, and edges represent similarity relationships 
