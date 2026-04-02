@@ -1,4 +1,5 @@
-# Placeholder Team
+# Cultural Diffusion of Non-US Place Names in the US
+
 
 ### Molly Anderson & Ray Wang
 
@@ -22,6 +23,20 @@ must support both exploratory analysis and intuitive understanding,
 allowing users to gradually move from high-level patterns to detailed 
 interpretations.
 
+For this proposal, we will use an example target user: Anne Humphry
+Anne is an undergraduate student majoring in history and doing a final 
+project for a class where she must compile and analyze cultural/historical 
+evidence to argue that the first large wave of immigration to the US 
+(1840-1889) was more impactful than the other waves as it fundamentally 
+predefined American identity. She recently has been looking into settlement 
+patterns and preserved cultural identity when she stumbled upon this 
+interactive map and wonders if she can use it. Anne has limited expertise 
+in GIS and geospatial tools, but she is familiar with Google Maps, which 
+she uses almost daily. She is willing to spend a little time learning how 
+to use an interface to get the insights she is looking to include in her 
+project.
+
+
 ---
 
 # Scenario
@@ -43,8 +58,24 @@ particularly along the East Coast, toward inland areas.
 Finally, the user investigates specific place names or clusters, examining 
 their origins, similarities, and relationships to other names through both 
 spatial proximity and semantic similarity. This process follows a 
-progressive exploration workflow consistent with the principle of 
-“overview first, zoom and filter, then details-on-demand”.
+progressive exploration workflow consistent with the Schneiderman's mantra 
+of “overview first, zoom and filter, then details-on-demand”.
+
+Since Anne is interested in those that came to the US during the first wave 
+of immigration, she chooses to look into German names first, choosing "Berlin"
+as her first subject. She is shocked to discover that the name initially came 
+over with settlers much earlier than she would assume, with at least three 
+places named Berlin before the year 1800! She uses the toggle to show her 
+beyond the initial names,and finds, with the help of the coordinated bar 
+chart,that diffusion of the name spiked durirng exactly the time she is 
+studying, especially when she filters for just city and street names. She 
+hovers over some of the points to learn percisely when they were denoted. She 
+clicks on one of them to bring up the general information panel. She learns 
+about how some of the places are called 'New' Berlin or how the mapmakers note 
+there is more directionally defined Berlins than other names (North,East,
+South,West). She clicks on the line chart to get the exact value of the peak 
+for her notes, and then decides to choose a few other of the names given to
+be representative evidence for her project arguement. 
 
 ---
 
@@ -54,7 +85,9 @@ progressive exploration workflow consistent with the principle of
 
 The system represents cultural diffusion of place names through multiple 
 coordinated views that operate across different spatial and conceptual 
-scales. At the global level, the visualization presents origin regions 
+scales. 
+
+At the global level, the visualization presents origin regions 
 outside the United States, highlighting areas such as Europe that have 
 historically contributed to U.S. place naming. These regions are connected 
 to the United States using directional links that represent inferred 
@@ -64,7 +97,7 @@ origins and their adoption in the U.S.
 
 At the national level, the United States is visualized as a spatial 
 distribution of place names, where each location is represented as a 
-point. These points are encoded by origin category, allowing users to 
+connected point. These points are encoded by origin category, allowing users to 
 distinguish between names derived from different cultural or linguistic 
 backgrounds. Additional visual encodings may include temporal categories 
 or clustering structures to reveal patterns of expansion and 
@@ -76,7 +109,7 @@ views help users understand aggregate patterns, such as which cultural
 sources are most dominant and how far names tend to diffuse from their 
 inferred origins.
 
-Finally, a detail view provides contextual information for selected place 
+Finally, a detailed view provides contextual information for selected place 
 names, including their origin classification and explanatory 
 interpretation.
 
@@ -100,13 +133,16 @@ diffusion gradients from coastal to inland areas.
 
 - Time Evolution  
 
-The website introduces a temporal exploration mechanism that allows users to examine how place-name diffusion evolves over time. 
-Because explicit temporal data are not always available, time is represented as an inferred or categorized dimension (e.g., early 
+The website introduces a temporal exploration mechanism that allows users 
+to examine how place-name diffusion evolves over time. 
+Because explicit temporal data are not always available, time is represented 
+as an inferred or categorized dimension (e.g., early 
 settlement period, westward expansion period, modern naming).
 
-Users can interact with a timeline slider or discrete temporal categories to animate the diffusion process, observing how place names 
-appear and spread across the United States. This allows users to interpret diffusion not only as a spatial pattern but as a dynamic 
-historical process.
+Users can interact with a timeline slider or discrete temporal categories to 
+animate the diffusion process, observing how place names appear and spread 
+across the United States. This allows users to interpret diffusion not only 
+as a spatial pattern but as a dynamic historical process.
 
  - Details-on-Demand  
 
