@@ -83,7 +83,7 @@ be representative evidence for her project arguement.
 
 ## Representation
 
-The system represents cultural diffusion of place names through multiple 
+The website represents cultural diffusion of place names through multiple 
 coordinated views that operate across different spatial and conceptual 
 scales. 
 
@@ -109,9 +109,12 @@ views help users understand aggregate patterns, such as which cultural
 sources are most dominant and how far names tend to diffuse from their 
 inferred origins.
 
-Finally, a detailed view provides contextual information for selected place 
-names, including their origin classification and explanatory 
-interpretation.
+Finally, a coordinated detail view links the non-spatial semantic network 
+with the geographic map. The network represents relationships between place 
+names in an abstract similarity space, while the map situates them in 
+physical space. Selecting a node in the network highlights its geographic 
+location and inferred diffusion links, allowing users to trace connections 
+between semantic relationships and spatial distributions.
 
 ---
 
