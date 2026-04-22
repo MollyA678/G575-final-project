@@ -1,29 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width">
-            <title></title>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cultural Diffusion of Non-US Place Names</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <main class="app-shell">
+        <header class="hero">
+            <div class="hero__copy">
+                <p class="hero__eyebrow">GEOG 575 Prototype Skeleton</p>
+                <h1 class="hero__title">Cultural Diffusion of Non-US Place Names in the US</h1>
+                <p class="hero__subtitle">
+                    A coordinated prototype built from the project wireframes and now backed by real
+                    USGS GNIS place-name records. The current version uses a curated subset of exact-name
+                    matches plus proxy time groupings so the overall interaction structure is already data-driven.
+                </p>
+            </div>
 
-        <!--put your external stylesheet links here-->
-        <link rel="stylesheet" href="css/style.css">
-        <!--[if IE<9]>
-            <link rel="stylesheet" href="css/style.ie.css">
-        <![endif]-->
+            <nav class="view-switch" aria-label="Visualization views">
+                <button class="view-pill is-active" type="button" data-view="global">Global</button>
+                <button class="view-pill" type="button" data-view="usa">USA</button>
+                <button class="view-pill" type="button" data-view="local">Local</button>
+            </nav>
+        </header>
 
-         <!--you can also place internal styles here;
-             place these within <style> tags-->
-        
-    </head>
+        <section class="workspace">
+            <aside class="control-panel">
+                <section class="panel-card">
+                    <label class="search-box" for="search-input">
+                        <span class="search-box__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <circle cx="11" cy="11" r="6.5"></circle>
+                                <line x1="15.8" y1="15.8" x2="21" y2="21"></line>
+                            </svg>
+                        </span>
+                        <input id="search-input" type="search" placeholder="Search origins or place names">
+                    </label>
+                </section>
 
-    <body>
-        <!--put your initial page content here-->
+                <section class="panel-card">
+                    <div class="section-heading">
+                        <p class="section-heading__eyebrow">Origins</p>
+                        <h2 class="section-heading__title">Source Regions</h2>
+                    </div>
+                    <div id="origin-list" class="list-stack" aria-live="polite"></div>
+                </section>
 
-        <!--you can also use this space for internal scripts;
-        place these within <script> tags-->
+                <section class="panel-card">
+                    <div class="section-heading">
+                        <p class="section-heading__eyebrow">Names</p>
+                        <h2 class="section-heading__title">Related Places</h2>
+                    </div>
+                    <div id="place-list" class="list-stack" aria-live="polite"></div>
+                </section>
 
-        <!--put your external script links here-->
-        <script type="text/javascript" src="js/main.js"></script>
-        <script type="text/javascript" src="lib/jquery-3.5.1.js"></script>
-    </body>
+                <section class="panel-card">
+                    <div class="section-heading">
+                        <p class="section-heading__eyebrow">Filters</p>
+                        <h2 class="section-heading__title">U.S. Regions</h2>
+                    </div>
+                    <div id="feature-filters" class="filter-grid"></div>
+                </section>
+            </aside>
+
+            <section class="main-panel">
+                <div class="panel-row">
+                    <section class="stats-card">
+                        <div class="stats-card__header">
+                            <div>
+                                <p class="section-heading__eyebrow">Statistics</p>
+                                <h2 id="stat-title" class="section-heading__title">Places named Kingston over time</h2>
+                                <p id="stat-summary" class="section-copy"></p>
+                            </div>
+
+                            <label class="select-box" for="stat-select">
+                                <span class="select-box__label">Choose statistic</span>
+                                <select id="stat-select">
+                                    <option value="timeline">Growth over time</option>
+                                    <option value="distance">Distance profile</option>
+                                    <option value="rank">Local rank scatter</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <div id="stat-chart" class="chart-frame" aria-live="polite"></div>
+                    </section>
+
+                    <section class="legend-card">
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Layers</p>
+                            <h2 class="section-heading__title">Era Proxy</h2>
+                        </div>
+                        <div id="era-legend" class="legend-list"></div>
+                    </section>
+                </div>
+
+                <section class="viz-card">
+                    <div class="viz-card__header">
+                        <div>
+                            <p id="view-kicker" class="section-heading__eyebrow">Global diffusion view</p>
+                            <h2 id="view-title" class="section-heading__title">England to Kingston, NY</h2>
+                            <p id="view-description" class="section-copy"></p>
+                        </div>
+
+                        <button class="ghost-button" type="button" data-action="reset">Reset Focus</button>
+                    </div>
+
+                    <div id="viz-stage" class="viz-stage" aria-live="polite"></div>
+                </section>
+
+                <div class="details-grid">
+                    <section class="detail-card">
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Interpretation</p>
+                            <h2 class="section-heading__title">Story Notes</h2>
+                        </div>
+                        <p id="detail-copy" class="detail-copy"></p>
+                    </section>
+
+                    <section class="detail-card">
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Snapshot</p>
+                            <h2 class="section-heading__title">Selected Context</h2>
+                        </div>
+                        <dl id="metric-list" class="metric-list"></dl>
+                    </section>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script src="js/mapShapes.js"></script>
+    <script src="js/placeData.js"></script>
+    <script src="js/main.js"></script>
+</body>
 </html>
