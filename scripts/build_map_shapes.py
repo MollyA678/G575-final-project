@@ -44,6 +44,8 @@ def build_world_shapes():
     countries = []
 
     for _, row in world.iterrows():
+        label_point = row.geometry.representative_point()
+        label_x, label_y = project_world_point(label_point.y, label_point.x)
         path = geometry_to_svg_path(
             row.geometry,
             lambda lon, lat: project_world_point(lat, lon),
@@ -53,6 +55,10 @@ def build_world_shapes():
                 "name": row["NAME"],
                 "continent": row["CONTINENT"],
                 "path": path,
+                "label": {
+                    "x": label_x,
+                    "y": label_y,
+                },
             }
         )
 
@@ -66,6 +72,8 @@ def build_usa_shapes():
     state_paths = []
 
     for _, row in states.iterrows():
+        label_point = row.geometry.representative_point()
+        label_x, label_y = projection["project_projected"](label_point.x, label_point.y)
         path = geometry_to_svg_path(
             row.geometry,
             projection["project_projected"],
@@ -75,6 +83,10 @@ def build_usa_shapes():
                 "name": row["NAME"],
                 "abbr": row["STUSPS"],
                 "path": path,
+                "label": {
+                    "x": label_x,
+                    "y": label_y,
+                },
             }
         )
 

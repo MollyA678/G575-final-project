@@ -27,6 +27,21 @@ const REGION_COLORS = {
     west: "#b06bc8"
 };
 
+const MAP_VIEWBOX = {
+    width: 1000,
+    height: 560
+};
+
+const MAP_LABEL_COUNTRIES = new Set([
+    "United States of America",
+    "United Kingdom",
+    "Germany",
+    "Greece",
+    "Spain",
+    "Mexico",
+    "Canada"
+]);
+
 const VIEW_DEFAULT_STATS = {
     global: "timeline",
     usa: "distance",
@@ -79,13 +94,30 @@ const state = {
     selectedView: "usa",
     selectedStat: "distance",
     activeEras: new Set(ERAS.map((era) => era.key)),
-    activeFeatures: new Set(FEATURE_OPTIONS.map((feature) => feature.key))
+    activeFeatures: new Set(FEATURE_OPTIONS.map((feature) => feature.key)),
+    mapViews: {
+        global: { scale: 1, tx: 0, ty: 0 },
+        usa: { scale: 1, tx: 0, ty: 0 }
+    },
+    floatingPanels: {
+        leftCollapsed: false,
+        rightCollapsed: false
+    },
+    mapDrag: null
 };
 
 const elements = {};
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
+}
+
+function escapeAttr(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
 }
 
 function hexToRgba(hex, alpha) {
@@ -163,25 +195,139 @@ function getOriginCountryName(origin) {
     return ORIGIN_COUNTRY_LOOKUP[origin.name] || origin.name;
 }
 
-function renderWorldPolygons(origin) {
-    const originCountry = getOriginCountryName(origin);
-    return SHAPES.global.countries
-        .map((country) => `
-            <path class="world-country ${country.name === originCountry ? "is-origin" : ""}" d="${country.path}"></path>
-        `)
-        .join("");
+function getMapTransformString(mapType) {
+    const view = state.mapViews[mapType];
+    return `translate(${view.tx.toFixed(1)} ${view.ty.toFixed(1)}) scale(${view.scale.toFixed(3)})`;
 }
 
-function renderUsaPolygons(activeStates = new Set()) {
-    const states = SHAPES.usa.states
-        .map((shape) => `
-            <path class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""}" d="${shape.path}"></path>
+function clampMapView(mapType) {
+    const view = state.mapViews[mapType];
+
+    if (view.scale <= 1) {
+        view.scale = 1;
+        view.tx = 0;
+        view.ty = 0;
+        return;
+    }
+
+    const minTx = MAP_VIEWBOX.width - MAP_VIEWBOX.width * view.scale;
+    const minTy = MAP_VIEWBOX.height - MAP_VIEWBOX.height * view.scale;
+
+    view.tx = clamp(view.tx, minTx, 0);
+    view.ty = clamp(view.ty, minTy, 0);
+}
+
+function applyMapTransform(mapType) {
+    const layer = document.querySelector(`[data-map-zoom-layer="${mapType}"]`);
+    const readout = document.querySelector(`[data-map-zoom-readout="${mapType}"]`);
+
+    if (layer) {
+        layer.setAttribute("transform", getMapTransformString(mapType));
+    }
+
+    if (readout) {
+        readout.textContent = `${Math.round(state.mapViews[mapType].scale * 100)}%`;
+    }
+}
+
+function zoomMapAt(mapType, targetScale, anchorX, anchorY) {
+    const view = state.mapViews[mapType];
+    const nextScale = clamp(targetScale, 1, 8);
+
+    if (nextScale === view.scale) {
+        return;
+    }
+
+    const scaleRatio = nextScale / view.scale;
+    view.tx = anchorX - (anchorX - view.tx) * scaleRatio;
+    view.ty = anchorY - (anchorY - view.ty) * scaleRatio;
+    view.scale = nextScale;
+    clampMapView(mapType);
+    applyMapTransform(mapType);
+}
+
+function resetMapView(mapType) {
+    state.mapViews[mapType] = { scale: 1, tx: 0, ty: 0 };
+    applyMapTransform(mapType);
+}
+
+function renderMapControls(mapType) {
+    return `
+        <div class="map-ui">
+            <div class="map-controls">
+                <button class="map-control-button" type="button" data-map-zoom="in" data-map-type="${mapType}" aria-label="Zoom in">+</button>
+                <button class="map-control-button" type="button" data-map-zoom="out" data-map-type="${mapType}" aria-label="Zoom out">−</button>
+                <button class="map-control-button map-control-button--wide" type="button" data-map-zoom="reset" data-map-type="${mapType}">Reset View</button>
+                <span class="map-zoom-readout" data-map-zoom-readout="${mapType}">100%</span>
+            </div>
+            <p class="map-hint">Scroll to zoom, drag to pan, double-click to reset.</p>
+        </div>
+    `;
+}
+
+function renderWorldPolygons(origin) {
+    const originCountry = getOriginCountryName(origin);
+    const countryPaths = SHAPES.global.countries
+        .map((country) => `
+            <path
+                class="world-country ${country.name === originCountry ? "is-origin" : ""}"
+                d="${country.path}"
+                data-tooltip="${escapeAttr(country.name)}"
+            ></path>
         `)
         .join("");
+
+    const countryLabels = SHAPES.global.countries
+        .filter((country) => MAP_LABEL_COUNTRIES.has(country.name) || country.name === originCountry)
+        .map((country) => `
+            <text
+                class="country-label ${country.name === originCountry ? "is-origin" : ""}"
+                x="${country.label.x}"
+                y="${country.label.y}"
+                text-anchor="middle"
+            >${country.name === "United States of America" ? "USA" : country.name}</text>
+        `)
+        .join("");
+
+    return `${countryPaths}<g class="map-label-layer">${countryLabels}</g>`;
+}
+
+function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), options = {}) {
+    const showLabels = options.showLabels !== false;
+    const states = SHAPES.usa.states
+        .map((shape) => {
+            const count = stateCounts.get(shape.name) || 0;
+            const tooltip = count
+                ? `${shape.name} · ${count} matching GNIS record${count === 1 ? "" : "s"}`
+                : shape.name;
+
+            return `
+                <path
+                    class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""}"
+                    d="${shape.path}"
+                    data-tooltip="${escapeAttr(tooltip)}"
+                ></path>
+            `;
+        })
+        .join("");
+
+    const labels = showLabels
+        ? SHAPES.usa.states
+            .map((shape) => `
+                <text
+                    class="state-abbr-label ${activeStates.has(shape.name) ? "is-active" : ""}"
+                    x="${shape.label.x}"
+                    y="${shape.label.y}"
+                    text-anchor="middle"
+                >${shape.abbr}</text>
+            `)
+            .join("")
+        : "";
 
     return `
         <path class="us-outline-real" d="${SHAPES.usa.outlinePath}"></path>
         ${states}
+        ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
     `;
 }
 
@@ -466,6 +612,147 @@ function renderStatChart(origin, place) {
     elements.statChart.innerHTML = renderTimelineChart(place);
 }
 
+function buildSvgPoint(svg, clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    return {
+        x: ((clientX - rect.left) / rect.width) * MAP_VIEWBOX.width,
+        y: ((clientY - rect.top) / rect.height) * MAP_VIEWBOX.height
+    };
+}
+
+function buildStateCountMap(points) {
+    return points.reduce((memo, point) => {
+        memo.set(point.state, (memo.get(point.state) || 0) + 1);
+        return memo;
+    }, new Map());
+}
+
+function setupMapInteractions() {
+    document.querySelectorAll("[data-map-svg]").forEach((svg) => {
+        if (svg.dataset.interactionsReady === "true") {
+            return;
+        }
+
+        svg.dataset.interactionsReady = "true";
+        const mapType = svg.dataset.mapSvg;
+
+        svg.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            const point = buildSvgPoint(svg, event.clientX, event.clientY);
+            const zoomFactor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+            zoomMapAt(mapType, state.mapViews[mapType].scale * zoomFactor, point.x, point.y);
+        }, { passive: false });
+
+        svg.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) {
+                return;
+            }
+
+            const startPoint = buildSvgPoint(svg, event.clientX, event.clientY);
+            state.mapDrag = {
+                mapType,
+                pointerId: event.pointerId,
+                startX: startPoint.x,
+                startY: startPoint.y,
+                startTx: state.mapViews[mapType].tx,
+                startTy: state.mapViews[mapType].ty
+            };
+            svg.setPointerCapture(event.pointerId);
+            svg.classList.add("is-dragging");
+            hideTooltip();
+        });
+
+        svg.addEventListener("pointermove", (event) => {
+            if (!state.mapDrag || state.mapDrag.mapType !== mapType || state.mapDrag.pointerId !== event.pointerId) {
+                return;
+            }
+
+            const currentPoint = buildSvgPoint(svg, event.clientX, event.clientY);
+            const view = state.mapViews[mapType];
+            view.tx = state.mapDrag.startTx + (currentPoint.x - state.mapDrag.startX);
+            view.ty = state.mapDrag.startTy + (currentPoint.y - state.mapDrag.startY);
+            clampMapView(mapType);
+            applyMapTransform(mapType);
+        });
+
+        const endDrag = (event) => {
+            if (!state.mapDrag || state.mapDrag.mapType !== mapType || state.mapDrag.pointerId !== event.pointerId) {
+                return;
+            }
+
+            state.mapDrag = null;
+            svg.classList.remove("is-dragging");
+            if (svg.hasPointerCapture?.(event.pointerId)) {
+                svg.releasePointerCapture(event.pointerId);
+            }
+        };
+
+        svg.addEventListener("pointerup", endDrag);
+        svg.addEventListener("pointercancel", endDrag);
+        svg.addEventListener("dblclick", (event) => {
+            event.preventDefault();
+            resetMapView(mapType);
+        });
+    });
+
+    applyMapTransform("global");
+    applyMapTransform("usa");
+}
+
+function ensureTooltip() {
+    if (elements.mapTooltip) {
+        return;
+    }
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "map-tooltip";
+    tooltip.hidden = true;
+    document.body.appendChild(tooltip);
+    elements.mapTooltip = tooltip;
+}
+
+function hideTooltip() {
+    if (!elements.mapTooltip) {
+        return;
+    }
+
+    elements.mapTooltip.hidden = true;
+}
+
+function showTooltip(text, clientX, clientY) {
+    ensureTooltip();
+    elements.mapTooltip.textContent = text;
+    elements.mapTooltip.hidden = false;
+
+    const offset = 16;
+    const maxX = window.innerWidth - elements.mapTooltip.offsetWidth - 12;
+    const maxY = window.innerHeight - elements.mapTooltip.offsetHeight - 12;
+    const left = clamp(clientX + offset, 12, Math.max(12, maxX));
+    const top = clamp(clientY + offset, 12, Math.max(12, maxY));
+
+    elements.mapTooltip.style.left = `${left}px`;
+    elements.mapTooltip.style.top = `${top}px`;
+}
+
+function handleVizPointerMove(event) {
+    if (state.mapDrag) {
+        hideTooltip();
+        return;
+    }
+
+    const tooltipTarget = event.target.closest("[data-tooltip]");
+    if (!tooltipTarget || !elements.vizStage.contains(tooltipTarget)) {
+        hideTooltip();
+        return;
+    }
+
+    showTooltip(tooltipTarget.dataset.tooltip, event.clientX, event.clientY);
+}
+
+function handleVizPointerLeave() {
+    hideTooltip();
+}
+
 function curvedPath(from, to, lift = 120) {
     const controlX = (from.x + to.x) / 2;
     const controlY = Math.min(from.y, to.y) - lift;
@@ -478,16 +765,19 @@ function renderGlobalView(origin, place) {
 
     return `
         <div class="viz-layout viz-layout--global">
-            <div class="viz-frame">
-                <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="Global diffusion view">
+            <div class="viz-frame map-frame">
+                ${renderMapControls("global")}
+                <svg class="viz-svg interactive-map" data-map-svg="global" viewBox="0 0 1000 560" role="img" aria-label="Global diffusion view">
                     <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
                     ${buildGrid(1000, 560, 84)}
-                    ${renderWorldPolygons(origin)}
-                    <path class="route route--wide" d="${route}" stroke="${origin.accent}"></path>
-                    <circle class="marker marker--origin" cx="${origin.anchor.x}" cy="${origin.anchor.y}" r="13"></circle>
-                    <circle class="marker" cx="${place.globalTarget.x}" cy="${place.globalTarget.y}" r="12"></circle>
-                    <text class="map-label" x="${origin.anchor.x + 18}" y="${origin.anchor.y - 8}">${origin.anchor.label}</text>
-                    <text class="map-label" x="${place.globalTarget.x + 18}" y="${place.globalTarget.y + 4}">${place.label}</text>
+                    <g class="map-zoom-layer" data-map-zoom-layer="global" transform="${getMapTransformString("global")}">
+                        ${renderWorldPolygons(origin)}
+                        <path class="route route--wide" d="${route}" stroke="${origin.accent}"></path>
+                        <circle class="marker marker--origin" cx="${origin.anchor.x}" cy="${origin.anchor.y}" r="13" data-tooltip="${escapeAttr(origin.anchor.label)}"></circle>
+                        <circle class="marker" cx="${place.globalTarget.x}" cy="${place.globalTarget.y}" r="12" data-tooltip="${escapeAttr(place.label)}"></circle>
+                        <text class="map-label map-label--important" x="${origin.anchor.x + 18}" y="${origin.anchor.y - 8}">${origin.anchor.label}</text>
+                        <text class="map-label map-label--important" x="${place.globalTarget.x + 18}" y="${place.globalTarget.y + 4}">${place.label}</text>
+                    </g>
                     <text class="chart-label chart-label--muted" x="62" y="86">North America</text>
                     <text class="chart-label chart-label--muted" x="740" y="82">Europe / Mediterranean</text>
                     <text class="chart-note" x="58" y="518">Origin coordinates are country centroids; the U.S. point uses the selected anchor record from GNIS.</text>
@@ -521,6 +811,7 @@ function renderUsaView(origin, place) {
     };
     const visiblePoints = getVisibleUsPoints(place);
     const activeStates = new Set(visiblePoints.map((point) => point.state));
+    const stateCounts = buildStateCountMap(visiblePoints);
 
     const routes = visiblePoints
         .map((point) => {
@@ -531,25 +822,26 @@ function renderUsaView(origin, place) {
 
     const points = visiblePoints
         .map((point) => `
-            <circle class="dot-point" cx="${point.x}" cy="${point.y}" r="${point.radius}" fill="${REGION_COLORS[point.region] || origin.accent}">
-                <title>${point.tooltip}</title>
-            </circle>
+            <circle class="dot-point" cx="${point.x}" cy="${point.y}" r="${point.radius}" fill="${REGION_COLORS[point.region] || origin.accent}" data-tooltip="${escapeAttr(point.tooltip)}"></circle>
         `)
         .join("");
 
     return `
         <div class="viz-layout viz-layout--usa">
-            <div class="viz-frame">
-                <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="National diffusion view">
+            <div class="viz-frame map-frame">
+                ${renderMapControls("usa")}
+                <svg class="viz-svg interactive-map" data-map-svg="usa" viewBox="0 0 1000 560" role="img" aria-label="National diffusion view">
                     <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
                     ${buildGrid(1000, 560, 84)}
-                    ${renderUsaPolygons(activeStates)}
+                    <g class="map-zoom-layer" data-map-zoom-layer="usa" transform="${getMapTransformString("usa")}">
+                        ${renderUsaPolygons(activeStates, stateCounts)}
+                        <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="12" data-tooltip="${escapeAttr(origin.entryHub.label)}"></circle>
+                        <text class="map-label map-label--important" x="${hub.x - 10}" y="${hub.y - 18}" text-anchor="end">${origin.entryHub.label}</text>
+                        ${routes}
+                        ${points}
+                    </g>
                     <text class="chart-label chart-label--muted" x="118" y="116">Pacific</text>
                     <text class="chart-label chart-label--muted" x="844" y="182" text-anchor="end">Atlantic</text>
-                    <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="12"></circle>
-                    <text class="map-label" x="${hub.x - 10}" y="${hub.y - 18}" text-anchor="end">${origin.entryHub.label}</text>
-                    ${routes}
-                    ${points}
                     ${
                         !visiblePoints.length
                             ? `<text class="map-label" x="500" y="280" text-anchor="middle">Current filters hide all visible records.</text>`
@@ -647,12 +939,13 @@ function renderMiniMap(origin, place) {
         y: origin.entryHub.y
     };
     const activeStates = new Set(visiblePoints.map((point) => point.state));
+    const stateCounts = buildStateCountMap(visiblePoints);
 
     return `
         <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="Inset map">
             <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
             ${buildGrid(1000, 560, 84)}
-            ${renderUsaPolygons(activeStates)}
+            ${renderUsaPolygons(activeStates, stateCounts, { showLabels: false })}
             ${visiblePoints
                 .map((point) => {
                     const target = { x: point.x, y: point.y };
@@ -794,11 +1087,49 @@ function syncViewButtons() {
     });
 }
 
+function syncFloatingPanels() {
+    const config = {
+        left: {
+            collapsed: state.floatingPanels.leftCollapsed,
+            label: "browse",
+            expandedIcon: "‹",
+            collapsedIcon: "›"
+        },
+        right: {
+            collapsed: state.floatingPanels.rightCollapsed,
+            label: "layers",
+            expandedIcon: "›",
+            collapsedIcon: "‹"
+        }
+    };
+
+    Object.entries(config).forEach(([side, panelConfig]) => {
+        const panel = document.querySelector(`[data-floating-panel="${side}"]`);
+        const button = document.querySelector(`[data-panel-toggle="${side}"]`);
+        const icon = document.querySelector(`[data-panel-toggle-icon="${side}"]`);
+
+        if (!panel || !button || !icon) {
+            return;
+        }
+
+        panel.classList.toggle("is-collapsed", panelConfig.collapsed);
+        button.setAttribute("aria-expanded", String(!panelConfig.collapsed));
+        button.setAttribute(
+            "aria-label",
+            `${panelConfig.collapsed ? "Expand" : "Collapse"} ${panelConfig.label} panel`
+        );
+        icon.textContent = panelConfig.collapsed ? panelConfig.collapsedIcon : panelConfig.expandedIcon;
+    });
+}
+
 function renderApp() {
     const valid = normalizeSelection();
+    state.mapDrag = null;
+    hideTooltip();
     renderOriginList(getFilteredOrigins());
     renderFeatureFilters();
     syncViewButtons();
+    syncFloatingPanels();
     elements.searchInput.value = state.search;
 
     if (!valid) {
@@ -814,6 +1145,7 @@ function renderApp() {
     renderEraLegend(place);
     renderStatChart(origin, place);
     renderVizStage(origin, place);
+    setupMapInteractions();
     renderDetails(origin, place);
 }
 
@@ -828,6 +1160,31 @@ function resetCurrentFocus() {
 }
 
 function handleClick(event) {
+    const panelToggle = event.target.closest("[data-panel-toggle]");
+    if (panelToggle) {
+        const side = panelToggle.dataset.panelToggle;
+        const stateKey = side === "left" ? "leftCollapsed" : "rightCollapsed";
+        state.floatingPanels[stateKey] = !state.floatingPanels[stateKey];
+        syncFloatingPanels();
+        return;
+    }
+
+    const mapZoomButton = event.target.closest("[data-map-zoom]");
+    if (mapZoomButton) {
+        const mapType = mapZoomButton.dataset.mapType;
+        const action = mapZoomButton.dataset.mapZoom;
+
+        if (action === "reset") {
+            resetMapView(mapType);
+            return;
+        }
+
+        const scale = state.mapViews[mapType]?.scale || 1;
+        const nextScale = action === "in" ? scale * 1.25 : scale / 1.25;
+        zoomMapAt(mapType, nextScale, MAP_VIEWBOX.width / 2, MAP_VIEWBOX.height / 2);
+        return;
+    }
+
     const originButton = event.target.closest("[data-origin]");
     if (originButton) {
         state.selectedOrigin = originButton.dataset.origin;
@@ -921,9 +1278,13 @@ function init() {
     elements.metricList = document.getElementById("metric-list");
     elements.searchInput = document.getElementById("search-input");
 
+    ensureTooltip();
+    syncFloatingPanels();
     document.addEventListener("click", handleClick);
     document.addEventListener("change", handleChange);
     elements.searchInput.addEventListener("input", handleSearch);
+    elements.vizStage.addEventListener("pointermove", handleVizPointerMove);
+    elements.vizStage.addEventListener("pointerleave", handleVizPointerLeave);
 
     renderApp();
 }
