@@ -341,7 +341,7 @@ function smoothSvgPath(d, tension = 0.85, minSegment = 1.4) {
 const SMOOTHED_PATH_CACHE = new Map();
 function getSmoothPath(d) {
     if (!SMOOTHED_PATH_CACHE.has(d)) {
-        SMOOTHED_PATH_CACHE.set(d, smoothSvgPath(d, 0.85, 1.4));
+        SMOOTHED_PATH_CACHE.set(d, smoothSvgPath(d, 0.7, 0.6));
     }
     return SMOOTHED_PATH_CACHE.get(d);
 }
@@ -355,8 +355,7 @@ function getSmoothPath(d) {
 
 function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), options = {}) {
     const showLabels = options.showLabels !== false;
-    const strokeOnly = options.strokeOnly === true;
-    const fills = SHAPES.usa.states
+    const states = SHAPES.usa.states
         .map((shape) => {
             const count = stateCounts.get(shape.name) || 0;
             const tooltip = count
@@ -364,21 +363,12 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
                 : shape.name;
             return `
                 <path
-                    class="us-state-real us-state-real--fill ${activeStates.has(shape.name) ? "is-active" : ""}"
+                    class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""}"
                     d="${getSmoothPath(shape.path)}"
                     data-tooltip="${escapeAttr(tooltip)}"
                 ></path>
             `;
         })
-        .join("");
-
-    const strokes = SHAPES.usa.states
-        .map((shape) => `
-            <path
-                class="us-state-real us-state-real--stroke ${activeStates.has(shape.name) ? "is-active" : ""}"
-                d="${getSmoothPath(shape.path)}"
-            ></path>
-        `)
         .join("");
 
     const labels = showLabels
@@ -394,17 +384,10 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
             .join("")
         : "";
 
-    if (strokeOnly) {
-        return `
-            ${strokes}
-            <path class="us-outline-real us-outline-real--stroke" d="${getSmoothPath(SHAPES.usa.outlinePath)}"></path>
-            ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
-        `;
-    }
-
     return `
         <path class="us-outline-real" d="${getSmoothPath(SHAPES.usa.outlinePath)}"></path>
-        ${fills}
+        ${states}
+        ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
     `;
 }
 

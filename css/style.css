@@ -759,33 +759,14 @@ button {
 }
 
 .us-state-real {
-    vector-effect: non-scaling-stroke;
-    shape-rendering: geometricPrecision;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-    transition: fill 160ms ease, stroke 160ms ease;
-}
-
-.us-state-real--fill {
     fill: rgba(255, 255, 255, 0.56);
-    stroke: none;
-}
-
-.us-state-real--stroke {
-    fill: none;
-    stroke: rgba(29, 36, 48, 0.32);
+    stroke: rgba(29, 36, 48, 0.22);
     stroke-width: 1.2;
-    pointer-events: none;
-}
-
-.us-outline-real--stroke {
-    fill: none;
-    stroke: rgba(29, 36, 48, 0.4);
-    stroke-width: 1.8;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
-    pointer-events: none;
+    transition: fill 160ms ease, stroke 160ms ease;
+    shape-rendering: geometricPrecision;
 }
 
 .us-state-real:hover {
