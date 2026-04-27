@@ -496,7 +496,7 @@ function renderTimelineChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Cumulative count</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height - 14}" text-anchor="end">Statehood year proxy</text>
+            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">Statehood year proxy</text>
             <text class="chart-note" x="${highlighted.x + 10}" y="${highlighted.y - 12}">proxy timeline ends at ${highlighted.year}</text>
         </svg>
     `;
@@ -552,7 +552,7 @@ function renderDistanceChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height - 1}" text-anchor="end">Distance from entry corridor</text>
+            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">Distance from entry corridor</text>
         </svg>
     `;
 }
@@ -589,7 +589,7 @@ function renderRankChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Occurrences in one state</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height - 14}" text-anchor="end">State rank</text>
+            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">State rank</text>
         </svg>
     `;
 }

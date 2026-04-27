@@ -724,8 +724,11 @@ button {
     fill: rgba(62, 73, 92, 0.16);
     stroke: rgba(31, 40, 58, 0.12);
     stroke-width: 1.2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
     vector-effect: non-scaling-stroke;
     transition: fill 160ms ease, stroke 160ms ease;
+    shape-rendering: geometricPrecision;
 }
 
 .world-country:hover {
@@ -749,15 +752,21 @@ button {
     fill: rgba(245, 247, 249, 0.76);
     stroke: rgba(29, 36, 48, 0.22);
     stroke-width: 3.4;
+    stroke-linejoin: round;
+    stroke-linecap: round;
     vector-effect: non-scaling-stroke;
+    shape-rendering: geometricPrecision;
 }
 
 .us-state-real {
     fill: rgba(255, 255, 255, 0.56);
     stroke: rgba(29, 36, 48, 0.12);
     stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
     vector-effect: non-scaling-stroke;
     transition: fill 160ms ease, stroke 160ms ease;
+    shape-rendering: geometricPrecision;
 }
 
 .us-state-real:hover {
@@ -775,6 +784,9 @@ button {
     fill: none;
     stroke: rgba(29, 36, 48, 0.1);
     stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    shape-rendering: geometricPrecision;
 }
 
 .route {
