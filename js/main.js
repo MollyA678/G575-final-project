@@ -292,13 +292,13 @@ function renderWorldPolygons(origin) {
     return `${countryPaths}<g class="map-label-layer">${countryLabels}</g>`;
 }
 
-function smoothSvgPath(d, tension = 0.5) {
+function smoothSvgPath(d, tension = 0.85, minSegment = 1.4) {
     if (!d) return d;
     const subpaths = d.match(/M[^M]+/g) || [];
     return subpaths.map((sub) => {
         const tokens = sub.match(/-?\d+(?:\.\d+)?/g);
         if (!tokens || tokens.length < 4) return sub;
-        const points = [];
+        let points = [];
         for (let i = 0; i < tokens.length; i += 2) {
             points.push([parseFloat(tokens[i]), parseFloat(tokens[i + 1])]);
         }
@@ -307,6 +307,17 @@ function smoothSvgPath(d, tension = 0.5) {
         if (closed && points[0][0] === points[points.length - 1][0] && points[0][1] === points[points.length - 1][1]) {
             points.pop();
         }
+        const decimated = [points[0]];
+        for (let i = 1; i < points.length; i++) {
+            const last = decimated[decimated.length - 1];
+            const dx = points[i][0] - last[0];
+            const dy = points[i][1] - last[1];
+            if (Math.sqrt(dx * dx + dy * dy) >= minSegment) {
+                decimated.push(points[i]);
+            }
+        }
+        if (decimated.length < 3) return sub;
+        points = decimated;
         const n = points.length;
         const get = (i) => closed ? points[(i + n) % n] : points[Math.max(0, Math.min(n - 1, i))];
         let out = `M ${points[0][0]} ${points[0][1]}`;
@@ -330,6 +341,13 @@ function smoothSvgPath(d, tension = 0.5) {
 const SMOOTHED_PATH_CACHE = new Map();
 function getSmoothPath(d) {
     if (!SMOOTHED_PATH_CACHE.has(d)) {
+        SMOOTHED_PATH_CACHE.set(d, smoothSvgPath(d, 0.85, 1.4));
+    }
+    return SMOOTHED_PATH_CACHE.get(d);
+}
+
+function getSmoothPath(d) {
+    if (!SMOOTHED_PATH_CACHE.has(d)) {
         SMOOTHED_PATH_CACHE.set(d, smoothSvgPath(d, 0.5));
     }
     return SMOOTHED_PATH_CACHE.get(d);
@@ -337,21 +355,30 @@ function getSmoothPath(d) {
 
 function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), options = {}) {
     const showLabels = options.showLabels !== false;
-    const states = SHAPES.usa.states
+    const strokeOnly = options.strokeOnly === true;
+    const fills = SHAPES.usa.states
         .map((shape) => {
             const count = stateCounts.get(shape.name) || 0;
             const tooltip = count
                 ? `${shape.name} · ${count} matching GNIS record${count === 1 ? "" : "s"}`
                 : shape.name;
-
             return `
                 <path
-                    class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""}"
+                    class="us-state-real us-state-real--fill ${activeStates.has(shape.name) ? "is-active" : ""}"
                     d="${getSmoothPath(shape.path)}"
                     data-tooltip="${escapeAttr(tooltip)}"
                 ></path>
             `;
         })
+        .join("");
+
+    const strokes = SHAPES.usa.states
+        .map((shape) => `
+            <path
+                class="us-state-real us-state-real--stroke ${activeStates.has(shape.name) ? "is-active" : ""}"
+                d="${getSmoothPath(shape.path)}"
+            ></path>
+        `)
         .join("");
 
     const labels = showLabels
@@ -367,10 +394,17 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
             .join("")
         : "";
 
+    if (strokeOnly) {
+        return `
+            ${strokes}
+            <path class="us-outline-real us-outline-real--stroke" d="${getSmoothPath(SHAPES.usa.outlinePath)}"></path>
+            ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
+        `;
+    }
+
     return `
         <path class="us-outline-real" d="${getSmoothPath(SHAPES.usa.outlinePath)}"></path>
-        ${states}
-        ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
+        ${fills}
     `;
 }
 
@@ -813,13 +847,15 @@ function renderGlobalView(origin, place) {
                 <svg class="viz-svg interactive-map" data-map-svg="global" viewBox="0 0 1000 560" role="img" aria-label="Global diffusion view">
                     <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
                     ${buildGrid(1000, 560, 84)}
-                    <g class="map-zoom-layer" data-map-zoom-layer="global" transform="${getMapTransformString("global")}">
-                        ${renderWorldPolygons(origin)}
-                        <path class="route route--wide" d="${route}" stroke="${origin.accent}"></path>
-                        <circle class="marker marker--origin" cx="${origin.anchor.x}" cy="${origin.anchor.y}" r="13" data-tooltip="${escapeAttr(origin.anchor.label)}"></circle>
-                        <circle class="marker" cx="${place.globalTarget.x}" cy="${place.globalTarget.y}" r="12" data-tooltip="${escapeAttr(place.label)}"></circle>
-                        <text class="map-label map-label--important" x="${origin.anchor.x + 18}" y="${origin.anchor.y - 8}">${origin.anchor.label}</text>
-                        <text class="map-label map-label--important" x="${place.globalTarget.x + 18}" y="${place.globalTarget.y + 4}">${place.label}</text>
+                    <g class="map-zoom-layer" data-map-zoom-layer="usa" transform="${getMapTransformString("usa")}">
+                        ${renderUsaPolygons(activeStates, stateCounts, { strokeOnly: false, splitStrokes: true })}
+                        <g class="map-data-layer">
+                            <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="12" data-tooltip="${escapeAttr(origin.entryHub.label)}"></circle>
+                            <text class="map-label map-label--important" x="${hub.x - 10}" y="${hub.y - 18}" text-anchor="end">${origin.entryHub.label}</text>
+                            ${routes}
+                            ${points}
+                        </g>
+                        ${renderUsaPolygons(activeStates, stateCounts, { strokeOnly: true })}
                     </g>
                     <text class="chart-label chart-label--muted" x="62" y="86">North America</text>
                     <text class="chart-label chart-label--muted" x="740" y="82">Europe / Mediterranean</text>
