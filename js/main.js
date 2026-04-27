@@ -325,6 +325,12 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
         : "";
 
     return `
+        <defs>
+            <filter id="smoothEdges" x="-2%" y="-2%" width="104%" height="104%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="0.4"></feGaussianBlur>
+                <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"></feColorMatrix>
+            </filter>
+        </defs>
         <path class="us-outline-real" d="${SHAPES.usa.outlinePath}"></path>
         ${states}
         ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
