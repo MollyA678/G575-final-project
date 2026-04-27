@@ -552,7 +552,7 @@ function renderDistanceChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height - 4}" text-anchor="end">Distance from entry corridor</text>
+            <text class="axis-label" x="${width - padding.right}" y="${height - 3}" text-anchor="end">Distance from entry corridor</text>
         </svg>
     `;
 }
