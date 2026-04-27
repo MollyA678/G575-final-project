@@ -760,15 +760,13 @@ button {
 
 .us-state-real {
     fill: rgba(255, 255, 255, 0.56);
-    stroke: rgba(29, 36, 48, 0.28);
-    stroke-width: 2.5;
+    stroke: rgba(29, 36, 48, 0.22);
+    stroke-width: 1.2;
     stroke-linejoin: round;
     stroke-linecap: round;
-    paint-order: stroke fill;
     vector-effect: non-scaling-stroke;
     transition: fill 160ms ease, stroke 160ms ease;
     shape-rendering: geometricPrecision;
-    filter: url(#smoothEdges);
 }
 
 .us-state-real:hover {

@@ -292,6 +292,49 @@ function renderWorldPolygons(origin) {
     return `${countryPaths}<g class="map-label-layer">${countryLabels}</g>`;
 }
 
+function smoothSvgPath(d, tension = 0.5) {
+    if (!d) return d;
+    const subpaths = d.match(/M[^M]+/g) || [];
+    return subpaths.map((sub) => {
+        const tokens = sub.match(/-?\d+(?:\.\d+)?/g);
+        if (!tokens || tokens.length < 4) return sub;
+        const points = [];
+        for (let i = 0; i < tokens.length; i += 2) {
+            points.push([parseFloat(tokens[i]), parseFloat(tokens[i + 1])]);
+        }
+        if (points.length < 3) return sub;
+        const closed = /Z\s*$/i.test(sub);
+        if (closed && points[0][0] === points[points.length - 1][0] && points[0][1] === points[points.length - 1][1]) {
+            points.pop();
+        }
+        const n = points.length;
+        const get = (i) => closed ? points[(i + n) % n] : points[Math.max(0, Math.min(n - 1, i))];
+        let out = `M ${points[0][0]} ${points[0][1]}`;
+        const last = closed ? n : n - 1;
+        for (let i = 0; i < last; i++) {
+            const p0 = get(i - 1);
+            const p1 = get(i);
+            const p2 = get(i + 1);
+            const p3 = get(i + 2);
+            const cp1x = p1[0] + (p2[0] - p0[0]) * tension / 6;
+            const cp1y = p1[1] + (p2[1] - p0[1]) * tension / 6;
+            const cp2x = p2[0] - (p3[0] - p1[0]) * tension / 6;
+            const cp2y = p2[1] - (p3[1] - p1[1]) * tension / 6;
+            out += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0]} ${p2[1]}`;
+        }
+        if (closed) out += " Z";
+        return out;
+    }).join(" ");
+}
+
+const SMOOTHED_PATH_CACHE = new Map();
+function getSmoothPath(d) {
+    if (!SMOOTHED_PATH_CACHE.has(d)) {
+        SMOOTHED_PATH_CACHE.set(d, smoothSvgPath(d, 0.5));
+    }
+    return SMOOTHED_PATH_CACHE.get(d);
+}
+
 function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), options = {}) {
     const showLabels = options.showLabels !== false;
     const states = SHAPES.usa.states
@@ -304,7 +347,7 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
             return `
                 <path
                     class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""}"
-                    d="${shape.path}"
+                    d="${getSmoothPath(shape.path)}"
                     data-tooltip="${escapeAttr(tooltip)}"
                 ></path>
             `;
@@ -325,13 +368,7 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
         : "";
 
     return `
-        <defs>
-            <filter id="smoothEdges" x="-2%" y="-2%" width="104%" height="104%">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="0.4"></feGaussianBlur>
-                <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"></feColorMatrix>
-            </filter>
-        </defs>
-        <path class="us-outline-real" d="${SHAPES.usa.outlinePath}"></path>
+        <path class="us-outline-real" d="${getSmoothPath(SHAPES.usa.outlinePath)}"></path>
         ${states}
         ${showLabels ? `<g class="map-label-layer">${labels}</g>` : ""}
     `;
