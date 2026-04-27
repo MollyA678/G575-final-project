@@ -552,7 +552,7 @@ function renderDistanceChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height - 3}" text-anchor="end">Distance from entry corridor</text>
+            <text class="axis-label" x="${width - padding.right}" y="${height - 1}" text-anchor="end">Distance from entry corridor</text>
         </svg>
     `;
 }
@@ -871,31 +871,38 @@ function renderUsaView(origin, place) {
 function buildLocalNetwork(origin, place) {
     const selectedNode = {
         id: "selected",
-        x: 520,
-        y: 250,
-        size: 26 + place.totalRecords / 6,
+        x: 500,
+        y: 240,
+        size: Math.min(26 + place.totalRecords / 6, 38),
         color: origin.accent,
         label: place.name,
         selected: true
     };
 
-    const siblingNodes = origin.places
-        .filter((candidate) => candidate.id !== place.id)
-        .map((candidate, index) => ({
-            id: `sibling-${candidate.id}`,
-            x: 250,
-            y: 170 + index * 120,
-            size: 16 + candidate.totalRecords / 8,
-            color: origin.accent,
-            label: `${candidate.name} (${candidate.totalRecords})`,
-            group: "sibling"
-        }));
+    const siblings = origin.places.filter((candidate) => candidate.id !== place.id);
+    const siblingCount = Math.max(siblings.length, 1);
+    const siblingTop = 170;
+    const siblingBottom = 360;
+    const siblingStep = siblingCount > 1 ? (siblingBottom - siblingTop) / (siblingCount - 1) : 0;
+    const siblingNodes = siblings.map((candidate, index) => ({
+        id: `sibling-${candidate.id}`,
+        x: 170,
+        y: siblingCount > 1 ? siblingTop + index * siblingStep : 250,
+        size: Math.min(16 + candidate.totalRecords / 8, 28),
+        color: origin.accent,
+        label: `${candidate.name} (${candidate.totalRecords})`,
+        group: "sibling"
+    }));
 
+    const stateCount = Math.max(place.topStates.length, 1);
+    const stateTop = 90;
+    const stateBottom = 410;
+    const stateStep = stateCount > 1 ? (stateBottom - stateTop) / (stateCount - 1) : 0;
     const stateNodes = place.topStates.map((entry, index) => ({
         id: `state-${entry.state.toLowerCase().replace(/\s+/g, "-")}`,
-        x: 785,
-        y: 120 + index * 62,
-        size: 14 + entry.count * 5,
+        x: 800,
+        y: stateCount > 1 ? stateTop + index * stateStep : 250,
+        size: Math.min(14 + entry.count * 5, 22),
         color: REGION_COLORS[
             place.records.find((record) => record.state === entry.state)?.region || "south"
         ],
@@ -904,18 +911,22 @@ function buildLocalNetwork(origin, place) {
         state: entry.state
     }));
 
-    const regionEntries = Object.entries(place.regionCounts)
-        .sort(([, countA], [, countB]) => countB - countA)
-        .map(([region, count], index) => ({
-            id: `region-${region}`,
-            x: 280 + index * 160,
-            y: 430,
-            size: 14 + count * 2,
-            color: REGION_COLORS[region],
-            label: `${DATA.meta.regionLabels[region]} (${count})`,
-            group: "region",
-            region
-        }));
+    const regionList = Object.entries(place.regionCounts)
+        .sort(([, countA], [, countB]) => countB - countA);
+    const regionCount = Math.max(regionList.length, 1);
+    const regionLeft = 240;
+    const regionRight = 760;
+    const regionStep = regionCount > 1 ? (regionRight - regionLeft) / (regionCount - 1) : 0;
+    const regionEntries = regionList.map(([region, count], index) => ({
+        id: `region-${region}`,
+        x: regionCount > 1 ? regionLeft + index * regionStep : 500,
+        y: 470,
+        size: Math.min(14 + count * 2, 26),
+        color: REGION_COLORS[region],
+        label: `${DATA.meta.regionLabels[region]} (${count})`,
+        group: "region",
+        region
+    }));
 
     const nodes = [selectedNode, ...siblingNodes, ...stateNodes, ...regionEntries];
     const edges = [];
@@ -1001,8 +1012,7 @@ function renderLocalView(origin, place) {
                                     <text class="network-label" x="${node.x + node.size + 10}" y="${node.y + 4}">${node.label}</text>
                                 `)
                                 .join("")}
-                            <text class="chart-note" x="48" y="520">Left: sibling names from the same origin group. Right: top states. Bottom: filtered regional communities.</text>
-                        </svg>
+                            <text class="chart-note" x="48" y="540">Left: sibling names from the same origin group. Right: top states. Bottom: filtered regional communities.</text>                        </svg>
                     </div>
 
                     <div class="community-legend">
