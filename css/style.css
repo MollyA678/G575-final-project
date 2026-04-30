@@ -701,6 +701,149 @@ button {
     backdrop-filter: blur(12px);
 }
 
+.local-inset-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    width: 388px;
+    padding: 12px;
+    border: 1px solid rgba(29, 36, 48, 0.12);
+    border-radius: 22px;
+    background: rgba(255, 251, 245, 0.84);
+    box-shadow: 0 18px 38px rgba(20, 28, 37, 0.16);
+    backdrop-filter: blur(16px);
+    transform-origin: top left;
+    touch-action: none;
+    user-select: none;
+}
+
+.local-inset-card.is-dragging {
+    cursor: grabbing;
+    box-shadow: 0 22px 42px rgba(20, 28, 37, 0.2);
+}
+
+.local-inset-card__toolbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    cursor: grab;
+}
+
+.local-inset-card__toolbar-copy {
+    min-width: 0;
+}
+
+.local-inset-card__toolbar-copy h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.local-inset-card__collapsed-label {
+    display: none;
+}
+
+.local-inset-card__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.local-inset-card__readout {
+    min-width: 52px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--muted);
+}
+
+.local-inset-card__action {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid rgba(29, 36, 48, 0.12);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.84);
+    color: var(--ink);
+}
+
+.local-inset-card__action--wide {
+    min-width: 58px;
+}
+
+.local-inset-card__action--toggle {
+    min-width: 36px;
+    font-size: 1.1rem;
+}
+
+.local-inset-card__header {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.local-inset-card__hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.local-inset-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.local-inset-card__content {
+    display: block;
+}
+
+.local-inset-card.is-collapsed {
+    width: 62px;
+    padding: 10px;
+}
+
+.local-inset-card.is-collapsed .local-inset-card__toolbar {
+    min-height: 170px;
+    margin-bottom: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.local-inset-card.is-collapsed .annotation-card__eyebrow,
+.local-inset-card.is-collapsed .local-inset-card__toolbar-copy h3,
+.local-inset-card.is-collapsed .local-inset-card__readout,
+.local-inset-card.is-collapsed [data-local-inset-scale],
+.local-inset-card.is-collapsed .local-inset-card__action--wide,
+.local-inset-card.is-collapsed .local-inset-card__content {
+    display: none;
+}
+
+.local-inset-card.is-collapsed .local-inset-card__toolbar-copy {
+    display: grid;
+    place-items: center;
+}
+
+.local-inset-card.is-collapsed .local-inset-card__collapsed-label {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+}
+
+.local-inset-card.is-collapsed .local-inset-card__actions {
+    justify-content: center;
+}
+
 .map-surface,
 .plot-surface {
     fill: rgba(255, 255, 255, 0.54);
@@ -731,6 +874,11 @@ button {
     shape-rendering: geometricPrecision;
 }
 
+.world-country.is-selectable,
+.country-label.is-selectable {
+    cursor: pointer;
+}
+
 .world-country:hover {
     fill: rgba(15, 158, 171, 0.18);
     stroke: rgba(15, 158, 171, 0.4);
@@ -740,6 +888,23 @@ button {
     fill: rgba(15, 158, 171, 0.28);
     stroke: rgba(15, 158, 171, 0.7);
     stroke-width: 1.8;
+}
+
+.world-country.is-linked {
+    fill: rgba(15, 158, 171, 0.24);
+    stroke: rgba(15, 158, 171, 0.62);
+}
+
+.interactive-map[data-detail-level="coarse"] .world-country {
+    stroke-width: 1.05;
+}
+
+.interactive-map[data-detail-level="medium"] .world-country {
+    stroke-width: 1.16;
+}
+
+.interactive-map[data-detail-level="fine"] .world-country {
+    stroke-width: 1.24;
 }
 
 .usa-outline {
@@ -779,6 +944,41 @@ button {
     stroke: rgba(15, 158, 171, 0.32);
 }
 
+.us-state-real.is-focused {
+    fill: rgba(15, 158, 171, 0.22);
+    stroke: rgba(15, 158, 171, 0.82);
+    stroke-width: 2;
+}
+
+.us-state-real.is-linked {
+    fill: rgba(15, 158, 171, 0.2);
+    stroke: rgba(15, 158, 171, 0.58);
+}
+
+.interactive-map[data-detail-level="coarse"] .us-outline-real {
+    stroke-width: 3.3;
+}
+
+.interactive-map[data-detail-level="medium"] .us-outline-real {
+    stroke-width: 3.05;
+}
+
+.interactive-map[data-detail-level="fine"] .us-outline-real {
+    stroke-width: 2.75;
+}
+
+.interactive-map[data-detail-level="coarse"] .us-state-real {
+    stroke-width: 1.1;
+}
+
+.interactive-map[data-detail-level="medium"] .us-state-real {
+    stroke-width: 1;
+}
+
+.interactive-map[data-detail-level="fine"] .us-state-real {
+    stroke-width: 0.92;
+}
+
 .state-line,
 .terrain-line {
     fill: none;
@@ -805,6 +1005,11 @@ button {
     opacity: 0.18;
 }
 
+.route.is-linked {
+    opacity: 1;
+    stroke-width: 6.2;
+}
+
 .point-label,
 .map-label,
 .chart-label,
@@ -824,8 +1029,22 @@ button {
     font-weight: 600;
 }
 
+.network-label {
+    paint-order: stroke;
+    stroke: rgba(252, 248, 240, 0.98);
+    stroke-width: 6px;
+    stroke-linejoin: round;
+    letter-spacing: -0.01em;
+}
+
 .map-label-layer {
     pointer-events: none;
+}
+
+.map-label-layer [data-tooltip],
+.map-label-layer [data-origin],
+.map-label-layer [data-state-focus] {
+    pointer-events: auto;
 }
 
 .state-abbr-label,
@@ -851,6 +1070,18 @@ button {
     opacity: 1;
 }
 
+.state-abbr-label.is-focused {
+    fill: var(--accent);
+    opacity: 1;
+}
+
+.state-abbr-label.is-linked,
+.country-label.is-linked,
+.map-label--important.is-linked {
+    fill: var(--accent);
+    opacity: 1;
+}
+
 .country-label {
     font-size: 13px;
     opacity: 0.74;
@@ -871,6 +1102,10 @@ button {
     fill: var(--muted);
 }
 
+.map-context-label {
+    pointer-events: none;
+}
+
 .marker {
     fill: var(--accent);
     stroke: rgba(255, 255, 255, 0.92);
@@ -886,6 +1121,11 @@ button {
     fill: var(--accent);
 }
 
+.marker.is-linked {
+    stroke: rgba(16, 21, 33, 0.96);
+    stroke-width: 5;
+}
+
 .dot-point {
     stroke: rgba(255, 255, 255, 0.88);
     stroke-width: 2;
@@ -896,6 +1136,12 @@ button {
 .dot-point:hover {
     opacity: 1;
     stroke-width: 3;
+}
+
+.dot-point.is-linked {
+    opacity: 1;
+    stroke: #101521;
+    stroke-width: 3.5;
 }
 
 .timeline-line {
@@ -1107,6 +1353,12 @@ button {
 .network-node {
     stroke: rgba(255, 255, 255, 0.88);
     stroke-width: 2.5;
+    transition: stroke 160ms ease, stroke-width 160ms ease, transform 160ms ease, filter 160ms ease;
+}
+
+.network-node.is-summary {
+    stroke: rgba(255, 255, 255, 0.94);
+    stroke-dasharray: 6 5;
 }
 
 .network-node.is-selected {
@@ -1114,14 +1366,112 @@ button {
     stroke-width: 4;
 }
 
+.network-node.is-focused {
+    stroke: var(--accent);
+    stroke-width: 4.5;
+}
+
+.network-node.is-linked,
+.local-inset-node.is-linked .network-node {
+    stroke: #101521;
+    stroke-width: 4.5;
+    filter: drop-shadow(0 0 12px rgba(15, 158, 171, 0.34));
+}
+
 .network-edge {
+    fill: none;
     stroke: rgba(29, 36, 48, 0.12);
     stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.52;
+    transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
 }
 
 .network-edge.is-primary {
     stroke: rgba(29, 36, 48, 0.22);
     stroke-width: 2.8;
+    stroke-dasharray: 7 10;
+    opacity: 0.66;
+    animation: networkEdgeFlow 15s linear infinite;
+}
+
+.network-edge.is-linked {
+    stroke: rgba(15, 158, 171, 0.7);
+    stroke-width: 3.4;
+    opacity: 1;
+}
+
+.network-edge--inset {
+    stroke: rgba(29, 36, 48, 0.16);
+}
+
+.network-label.is-linked,
+.network-detail.is-linked,
+.local-inset-note.is-linked,
+.local-network-node.is-linked .network-label,
+.local-inset-node.is-linked .network-label,
+.local-inset-node.is-linked .local-inset-note,
+.local-network-node.is-linked .network-detail {
+    fill: var(--accent);
+}
+
+.network-detail {
+    fill: var(--muted);
+    font-size: 12px;
+    paint-order: stroke;
+    stroke: rgba(252, 248, 240, 0.98);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+}
+
+.local-network-node.is-summary .network-label,
+.local-inset-node.is-summary .network-label {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.local-network-node,
+.local-inset-node {
+    animation: networkNodeDrift var(--drift-duration, 12s) ease-in-out infinite alternate;
+    animation-delay: var(--drift-delay, 0s);
+    will-change: transform;
+}
+
+.local-network-node.is-selected,
+.local-inset-node.is-selected {
+    animation-duration: calc(var(--drift-duration, 12s) * 0.88);
+}
+
+.local-inset-node.is-clickable {
+    cursor: pointer;
+}
+
+.local-inset-node.is-clickable .network-node,
+.local-inset-node.is-clickable .network-label,
+.local-inset-node.is-clickable .local-inset-note {
+    cursor: pointer;
+}
+
+.local-network-node.is-clickable,
+.local-network-node.is-focusable-state,
+.local-network-node.is-clickable .network-node,
+.local-network-node.is-clickable .network-label,
+.local-network-node.is-focusable-state .network-node,
+.local-network-node.is-focusable-state .network-label,
+.viz-stage svg [data-origin],
+.viz-stage svg [data-state-focus],
+.viz-stage svg [data-place-id],
+.viz-stage svg [data-tooltip] {
+    cursor: pointer;
+}
+
+.network-label--inset {
+    font-size: 13px;
+}
+
+.local-inset-note {
+    font-size: 11px;
 }
 
 .chart-note {
@@ -1145,6 +1495,30 @@ button {
     pointer-events: none;
 }
 
+@keyframes networkNodeDrift {
+    0% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(calc(var(--drift-x, 0px) * 0.55), calc(var(--drift-y, 0px) * 0.55));
+    }
+
+    100% {
+        transform: translate(var(--drift-x, 0px), var(--drift-y, 0px));
+    }
+}
+
+@keyframes networkEdgeFlow {
+    0% {
+        stroke-dashoffset: 0;
+    }
+
+    100% {
+        stroke-dashoffset: -160;
+    }
+}
+
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -1155,6 +1529,14 @@ button {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .local-network-node,
+    .local-inset-node,
+    .network-edge.is-primary {
+        animation: none;
+    }
 }
 
 @media (max-width: 1180px) {
@@ -1229,6 +1611,29 @@ button {
         bottom: auto;
     }
 
+    .local-inset-card {
+        position: static;
+        width: auto;
+        margin-top: 14px;
+        transform: none;
+        user-select: auto;
+    }
+
+    .local-inset-card.is-collapsed {
+        width: auto;
+        padding: 12px;
+    }
+
+    .local-inset-card.is-collapsed .local-inset-card__toolbar {
+        min-height: 0;
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .local-inset-card.is-collapsed .local-inset-card__collapsed-label {
+        writing-mode: horizontal-tb;
+    }
+
     .details-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1293,5 +1698,9 @@ button {
     .map-hint {
         max-width: 240px;
         text-align: right;
+    }
+
+    .local-inset-card__header {
+        gap: 8px;
     }
 }

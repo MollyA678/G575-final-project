@@ -141,6 +141,7 @@ ORIGIN_CONFIG = [
             {"name": "Kingston", "focus_state": "New York", "note": "A recurring English name that appears from the Atlantic seaboard into the interior."},
             {"name": "Oxford", "focus_state": "Mississippi", "note": "Frequently reused across U.S. towns and small settlements, not just the Northeast."},
             {"name": "Windsor", "focus_state": "Connecticut", "note": "Useful for comparing an early New England anchor with later inland reuse."},
+            {"name": "Bristol", "focus_state": "Tennessee", "note": "Extends the English sample with a heavily reused town name that spans both eastern and interior settlement geographies."},
         ],
     },
     {
@@ -153,6 +154,7 @@ ORIGIN_CONFIG = [
             {"name": "Berlin", "focus_state": "Wisconsin", "note": "A high-frequency German sample with both Northeast and Midwest appearances."},
             {"name": "Hanover", "focus_state": "Pennsylvania", "note": "Strong enough to show how one origin name can recur across many states."},
             {"name": "Dresden", "focus_state": "Ohio", "note": "A smaller but still geographically legible German-derived sample."},
+            {"name": "Hamburg", "focus_state": "New York", "note": "Adds a major German city name that diffuses widely through northeastern and interior U.S. records."},
         ],
     },
     {
@@ -165,6 +167,7 @@ ORIGIN_CONFIG = [
             {"name": "Athens", "focus_state": "Georgia", "note": "A classical name with broad national reuse."},
             {"name": "Sparta", "focus_state": "Georgia", "note": "Provides a strong comparison case for Greek-derived symbolic naming."},
             {"name": "Corinth", "focus_state": "Mississippi", "note": "Useful because it forms dense state-level repetition rather than one dominant hub."},
+            {"name": "Troy", "focus_state": "Alabama", "note": "Expands the classical sample with another heavily reused ancient place name in U.S. civic naming."},
         ],
     },
     {
@@ -174,9 +177,10 @@ ORIGIN_CONFIG = [
         "entry_hub": {"label": "Gulf and Southwest corridor", "lat": 29.4241, "lon": -98.4936},
         "description": "Spanish-origin names concentrate in the Southwest, Gulf Coast, and former colonial corridors, but still diffuse well beyond them.",
         "places": [
-            {"name": "Valencia", "focus_state": "California", "note": "A compact Spanish-origin sample with a strong western pull."},
-            {"name": "Granada", "focus_state": "Colorado", "note": "A smaller set that helps contrast high-frequency and low-frequency names."},
             {"name": "Santa Fe", "focus_state": "New Mexico", "note": "An iconic Spanish-origin name with a strong Southwest anchor."},
+            {"name": "Toledo", "focus_state": "Ohio", "note": "A durable Spanish city name that shows how Iberian toponyms diffuse well beyond the Southwest."},
+            {"name": "Madrid", "focus_state": "Iowa", "note": "Useful for comparing a capital-city name with more regionally anchored Spanish samples."},
+            {"name": "Valencia", "focus_state": "California", "note": "A compact Spanish-origin sample with a strong western pull."},
         ],
     },
     {
@@ -189,6 +193,55 @@ ORIGIN_CONFIG = [
             {"name": "Sonora", "focus_state": "Texas", "note": "A Mexican-state name that appears across multiple U.S. states in GNIS."},
             {"name": "Durango", "focus_state": "Colorado", "note": "A lower-frequency borderlands sample anchored in the interior West."},
             {"name": "Guadalupe", "focus_state": "California", "note": "Included as a borderlands and Hispanic toponymic bridge in the prototype."},
+            {"name": "Tampico", "focus_state": "Illinois", "note": "Adds a Gulf-facing Mexican place name whose GNIS points extend into the Midwest and interior South."},
+        ],
+    },
+    {
+        "name": "France",
+        "accent": "#4e7ac7",
+        "origin_coord": {"lat": 46.2276, "lon": 2.2137},
+        "entry_hub": {"label": "Mississippi and colonial corridor", "lat": 29.9511, "lon": -90.0715},
+        "description": "French-derived place names are strongly tied to colonial corridors in the Mississippi Valley and Northeast, but many diffuse well beyond those regions.",
+        "places": [
+            {"name": "Paris", "focus_state": "Texas", "note": "One of the most recognizable French-origin place names in the U.S. GNIS sample."},
+            {"name": "Orleans", "focus_state": "Vermont", "note": "Useful for contrasting a colonial-era French name with later inland reuse."},
+            {"name": "Versailles", "focus_state": "Kentucky", "note": "Shows how elite and courtly French toponyms were repeatedly adopted in U.S. settlement naming."},
+        ],
+    },
+    {
+        "name": "Italy",
+        "accent": "#4fa56c",
+        "origin_coord": {"lat": 41.8719, "lon": 12.5674},
+        "entry_hub": {"label": "Northeast immigrant corridor", "lat": 40.7128, "lon": -74.0060},
+        "description": "Italian place names in the U.S. GNIS sample cluster around the Northeast and diffuse into the South and Midwest through later migration and civic naming.",
+        "places": [
+            {"name": "Florence", "focus_state": "South Carolina", "note": "A high-frequency Italian sample with especially broad state coverage."},
+            {"name": "Rome", "focus_state": "Georgia", "note": "Pairs a major Italian city name with a strong southeastern anchor in the U.S."},
+            {"name": "Venice", "focus_state": "Florida", "note": "Shows how a famous Italian place name was reused in coastal and resort geographies as well as inland settlements."},
+        ],
+    },
+    {
+        "name": "Ireland",
+        "accent": "#3a9d8f",
+        "origin_coord": {"lat": 53.1424, "lon": -7.6921},
+        "entry_hub": {"label": "Atlantic migration corridor", "lat": 42.3601, "lon": -71.0589},
+        "description": "Irish-derived place names appear strongly along Atlantic settlement fronts and continue into interior U.S. migration corridors.",
+        "places": [
+            {"name": "Dublin", "focus_state": "Ohio", "note": "A strong Irish sample with broad national reuse and a clear Midwestern anchor."},
+            {"name": "Shannon", "focus_state": "Georgia", "note": "Useful for comparing river- and town-based Irish naming carried into the U.S. South and Midwest."},
+            {"name": "Limerick", "focus_state": "Maine", "note": "A smaller but still multi-state Irish-origin sample that complements the stronger Dublin pattern."},
+        ],
+    },
+    {
+        "name": "Netherlands",
+        "accent": "#d38a3d",
+        "origin_coord": {"lat": 52.1326, "lon": 5.2913},
+        "entry_hub": {"label": "Hudson Valley corridor", "lat": 42.6526, "lon": -73.7562},
+        "description": "Dutch-derived place names are most legible around the Hudson Valley and Great Lakes, but GNIS still shows wider diffusion beyond those early settlement geographies.",
+        "places": [
+            {"name": "Amsterdam", "focus_state": "New York", "note": "Anchors the Dutch sample with a clear New York and Hudson Valley connection."},
+            {"name": "Holland", "focus_state": "Michigan", "note": "Adds a high-frequency Dutch regional name that diffuses well into the interior U.S."},
+            {"name": "Zeeland", "focus_state": "Michigan", "note": "A smaller Dutch sample that keeps the Netherlands group tied to real GNIS-populated-place records."},
         ],
     },
 ]
@@ -481,6 +534,7 @@ def build_dataset():
             "generatedAt": datetime.now(timezone.utc).isoformat(),
             "sourceName": "USGS GNIS topical downloads",
             "sourceNote": "This prototype uses the March 25, 2026 Populated Places national extract plus the March 17, 2026 Feature Description/History national extract.",
+            "curationNote": "Origin groups and exemplar names are a curated sample of clearly non-U.S. toponyms matched against official GNIS populated-place records; GNIS itself does not encode etymology.",
             "timeProxyNote": "Time is inferred here from statehood-year bands rather than actual naming dates, because GNIS does not provide a consistent historical naming year for every record.",
             "regionLabels": REGION_LABELS,
             "eraLabels": ERAS,

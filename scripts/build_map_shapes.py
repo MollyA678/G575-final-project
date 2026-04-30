@@ -3,12 +3,24 @@ from pathlib import Path
 
 import geopandas as gpd
 
-from map_projection import CONTIGUOUS_EXCLUDE, STATE_ZIP, build_usa_projector, project_world_point
+from map_projection import build_usa_projector, project_world_point
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WORLD_ZIP = ROOT / "data" / "ne_110m_admin_0_countries.zip"
 OUTPUT_JS = ROOT / "js" / "mapShapes.js"
+
+WORLD_DETAIL_TOLERANCES = {
+    "coarse": 0.14,
+    "medium": 0.06,
+    "fine": None,
+}
+
+USA_DETAIL_TOLERANCES = {
+    "coarse": 4000,
+    "medium": 1000,
+    "fine": None,
+}
 
 
 def format_point(point):
@@ -37,24 +49,37 @@ def geometry_to_svg_path(geometry, projector):
     return ""
 
 
+def build_path_levels(geometry, projector, tolerances):
+    paths = {}
+
+    for level, tolerance in tolerances.items():
+        level_geometry = geometry if tolerance is None else geometry.simplify(tolerance, preserve_topology=True)
+        paths[level] = geometry_to_svg_path(level_geometry, projector)
+
+    return {
+        "path": paths["medium"],
+        "paths": paths,
+    }
+
+
 def build_world_shapes():
     world = gpd.read_file(f"zip://{WORLD_ZIP}")
     world = world[world["NAME"] != "Antarctica"].copy()
-    world["geometry"] = world["geometry"].simplify(0.08, preserve_topology=True)
     countries = []
 
     for _, row in world.iterrows():
         label_point = row.geometry.representative_point()
         label_x, label_y = project_world_point(label_point.y, label_point.x)
-        path = geometry_to_svg_path(
+        path_data = build_path_levels(
             row.geometry,
             lambda lon, lat: project_world_point(lat, lon),
+            WORLD_DETAIL_TOLERANCES,
         )
         countries.append(
             {
                 "name": row["NAME"],
                 "continent": row["CONTINENT"],
-                "path": path,
+                **path_data,
                 "label": {
                     "x": label_x,
                     "y": label_y,
@@ -68,21 +93,21 @@ def build_world_shapes():
 def build_usa_shapes():
     projection = build_usa_projector()
     states = projection["states_projected"].copy()
-    states["geometry"] = states["geometry"].simplify(8000, preserve_topology=True)
     state_paths = []
 
     for _, row in states.iterrows():
         label_point = row.geometry.representative_point()
         label_x, label_y = projection["project_projected"](label_point.x, label_point.y)
-        path = geometry_to_svg_path(
+        path_data = build_path_levels(
             row.geometry,
             projection["project_projected"],
+            USA_DETAIL_TOLERANCES,
         )
         state_paths.append(
             {
                 "name": row["NAME"],
                 "abbr": row["STUSPS"],
-                "path": path,
+                **path_data,
                 "label": {
                     "x": label_x,
                     "y": label_y,
@@ -90,14 +115,17 @@ def build_usa_shapes():
             }
         )
 
-    outline = geometry_to_svg_path(
-        states.union_all(),
+    outline_geometry = states.union_all()
+    outline_data = build_path_levels(
+        outline_geometry,
         projection["project_projected"],
+        USA_DETAIL_TOLERANCES,
     )
 
     return {
         "states": state_paths,
-        "outlinePath": outline,
+        "outlinePath": outline_data["path"],
+        "outlinePaths": outline_data["paths"],
     }
 
 
