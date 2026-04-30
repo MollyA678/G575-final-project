@@ -17,23 +17,43 @@ const COUNTRY_ORIGIN_LOOKUP = Object.fromEntries(
     Object.entries(ORIGIN_COUNTRY_LOOKUP).map(([originName, countryName]) => [countryName, originName])
 );
 
+const ORIGIN_ACCENT_OVERRIDES = {
+    England: "#63ebff",
+    Germany: "#8ea7ff",
+    Greece: "#ff4fb8",
+    Spain: "#ff8f4a",
+    Mexico: "#ff5f7f",
+    France: "#7e8fff",
+    Italy: "#59f7ba",
+    Ireland: "#6dffd8",
+    Netherlands: "#ffd166"
+};
+
+Object.entries(ORIGIN_ACCENT_OVERRIDES).forEach(([originName, accent]) => {
+    if (DATA.origins?.[originName]) {
+        DATA.origins[originName].accent = accent;
+    }
+});
+
 const FEATURE_OPTIONS = Object.entries(DATA.meta.regionLabels).map(([key, label]) => ({
     key,
     label
 }));
 
 const ERAS = [
-    { key: "early", label: DATA.meta.eraLabels.early, detail: "statehood proxy", color: "#5ec7e6" },
-    { key: "expansion", label: DATA.meta.eraLabels.expansion, detail: "statehood proxy", color: "#7fbe47" },
-    { key: "modern", label: DATA.meta.eraLabels.modern, detail: "statehood proxy", color: "#9944d6" }
+    { key: "early", label: DATA.meta.eraLabels.early, detail: "statehood proxy", color: "#63ebff" },
+    { key: "expansion", label: DATA.meta.eraLabels.expansion, detail: "statehood proxy", color: "#86a8ff" },
+    { key: "modern", label: DATA.meta.eraLabels.modern, detail: "statehood proxy", color: "#ff4fb8" }
 ];
 
 const REGION_COLORS = {
-    northeast: "#3576d3",
-    midwest: "#5b9d46",
-    south: "#d4782c",
-    west: "#b06bc8"
+    northeast: "#6da7ff",
+    midwest: "#69f7cf",
+    south: "#ff7b54",
+    west: "#c67bff"
 };
+
+const ORIGIN_NODE_COLOR = "#f6fbff";
 
 const MAP_VIEWBOX = {
     width: 1000,
@@ -99,7 +119,7 @@ const STAT_OPTIONS = {
     distance: {
         title: (place) => `${place.name} distance from entry corridor`,
         summary: (origin, place) =>
-            `Distances are measured from ${origin.entryHub.label}. The bars summarize how ${place.name} fans out by proxy era band.`
+            `Distances are measured from ${origin.entryHub.label}. The chart shows a direct kilometer distribution for visible GNIS records rather than grouped proxy-era bands.`
     },
     rank: {
         title: (place) => `${place.name} state rank by repeated occurrence`,
@@ -125,7 +145,7 @@ const VIEW_COPY = {
         kicker: "Local network view",
         title: (origin, place) => `${place.name} in relational space`,
         description: (origin) =>
-            `This schematic network links one selected name to sibling names, top states, and regional communities inside the ${origin.name} group.`
+            `This schematic network links one selected name to sibling names and to state-level distance relationships inside the ${origin.name} group.`
     }
 };
 
@@ -237,6 +257,62 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function colorWithAlpha(color, alpha) {
+    if (!color) {
+        return `rgba(255, 255, 255, ${alpha})`;
+    }
+
+    if (color.startsWith("rgba(")) {
+        const [r, g, b] = color
+            .slice(5, -1)
+            .split(",")
+            .slice(0, 3)
+            .map((value) => Number.parseFloat(value.trim()));
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    if (color.startsWith("rgb(")) {
+        const [r, g, b] = color
+            .slice(4, -1)
+            .split(",")
+            .slice(0, 3)
+            .map((value) => Number.parseFloat(value.trim()));
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    return hexToRgba(color, alpha);
+}
+
+function mixColors(colorA, colorB, t, alpha = 1) {
+    const parseColor = (color) => {
+        if (color.startsWith("#")) {
+            const sanitized = color.replace("#", "");
+            const value = parseInt(sanitized, 16);
+            return {
+                r: (value >> 16) & 255,
+                g: (value >> 8) & 255,
+                b: value & 255
+            };
+        }
+
+        const match = color.match(/rgba?\(([^)]+)\)/i);
+        if (match) {
+            const [r, g, b] = match[1].split(",").slice(0, 3).map((value) => Number.parseFloat(value.trim()));
+            return { r, g, b };
+        }
+
+        return { r: 255, g: 255, b: 255 };
+    };
+
+    const start = parseColor(colorA);
+    const end = parseColor(colorB);
+    const ratio = clamp(t, 0, 1);
+    const r = Math.round(start.r + (end.r - start.r) * ratio);
+    const g = Math.round(start.g + (end.g - start.g) * ratio);
+    const b = Math.round(start.b + (end.b - start.b) * ratio);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function hashString(value) {
     let hash = 2166136261;
     const text = String(value);
@@ -308,7 +384,26 @@ function buildOrganicFanPlacement(seedKey, index, count, options) {
     };
 }
 
-function curvedNetworkPath(from, to, amount = 40, direction = 1) {
+function buildDistancePlacement(seedKey, index, count, options) {
+    const t = count <= 1 ? 0.5 : index / (count - 1);
+    const angle = options.angleStart
+        + (options.angleEnd - options.angleStart) * t
+        + seededRange(seedKey, -options.angleJitter, options.angleJitter, 1);
+    const radius = options.radius
+        + seededRange(seedKey, -options.radiusJitter, options.radiusJitter, 2);
+    const point = polarPoint(options.cx, options.cy, radius, angle);
+
+    return {
+        x: point.x,
+        y: point.y,
+        driftX: seededRange(seedKey, -options.driftX, options.driftX, 3),
+        driftY: seededRange(seedKey, -options.driftY, options.driftY, 4),
+        driftDuration: seededRange(seedKey, options.durationMin, options.durationMax, 5),
+        driftDelay: seededRange(seedKey, options.delayMin, options.delayMax, 6)
+    };
+}
+
+function getCurvedNetworkGeometry(from, to, amount = 40, direction = 1) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const length = Math.max(Math.hypot(dx, dy), 1);
@@ -319,7 +414,125 @@ function curvedNetworkPath(from, to, amount = 40, direction = 1) {
     const controlX = midpointX + normalX * amount * direction;
     const controlY = midpointY + normalY * amount * direction;
 
-    return `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`;
+    return {
+        path: `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`,
+        from,
+        to,
+        controlX,
+        controlY
+    };
+}
+
+function curvedNetworkPath(from, to, amount = 40, direction = 1) {
+    return getCurvedNetworkGeometry(from, to, amount, direction).path;
+}
+
+function sampleQuadraticPoint(geometry, t) {
+    const clampedT = clamp(t, 0, 1);
+    const inverse = 1 - clampedT;
+    const x =
+        inverse * inverse * geometry.from.x
+        + 2 * inverse * clampedT * geometry.controlX
+        + clampedT * clampedT * geometry.to.x;
+    const y =
+        inverse * inverse * geometry.from.y
+        + 2 * inverse * clampedT * geometry.controlY
+        + clampedT * clampedT * geometry.to.y;
+    const dx =
+        2 * inverse * (geometry.controlX - geometry.from.x)
+        + 2 * clampedT * (geometry.to.x - geometry.controlX);
+    const dy =
+        2 * inverse * (geometry.controlY - geometry.from.y)
+        + 2 * clampedT * (geometry.to.y - geometry.controlY);
+    const length = Math.max(Math.hypot(dx, dy), 0.0001);
+
+    return {
+        x,
+        y,
+        dx,
+        dy,
+        normalX: -dy / length,
+        normalY: dx / length
+    };
+}
+
+function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
+    const context = options.context || "main";
+    const primary = Boolean(options.primary);
+    const count = clamp(
+        Math.round(options.distance / (context === "inset" ? 18 : 20)),
+        context === "inset" ? 8 : 10,
+        context === "inset" ? 18 : 24
+    );
+
+    return Array.from({ length: count }, (_, index) => {
+        const baseT = count <= 1 ? 0.5 : index / (count - 1);
+        const tJitter = seededRange(`${seedKey}:particle:${index}`, -0.01, 0.01, 1);
+        const t = clamp(baseT + tJitter, 0, 1);
+        const sample = sampleQuadraticPoint(geometry, t);
+        const laneSide = seededUnit(`${seedKey}:particle:${index}`, 2) > 0.5 ? 1 : -1;
+        const laneSpread = primary
+            ? (context === "inset" ? 0.68 : 1.02)
+            : (context === "inset" ? 0.52 : 0.82);
+        const laneOffset = laneSide * seededRange(
+            `${seedKey}:particle:${index}`,
+            laneSpread * 0.15,
+            laneSpread,
+            3
+        );
+        const lateralOffset = laneOffset + seededRange(
+            `${seedKey}:particle:${index}`,
+            context === "inset" ? -0.24 : -0.32,
+            context === "inset" ? 0.24 : 0.32,
+            4
+        );
+        const centerBias = 1 - Math.abs(baseT - 0.5) * 2;
+        const thicknessBase = primary
+            ? (context === "inset" ? 0.86 : 1.02)
+            : (context === "inset" ? 0.68 : 0.84);
+        const thickness = thicknessBase
+            + centerBias * (primary ? 0.42 : 0.3)
+            + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.08, 5);
+        const opacity = clamp(
+            (primary ? 0.62 : 0.48)
+            + centerBias * (primary ? 0.18 : 0.12)
+            + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.07, 6),
+            0.28,
+            0.96
+        );
+        const segmentLength = (primary ? 14.5 : 11.8) + centerBias * (primary ? 8.2 : 5.4);
+        const hidden = seededUnit(`${seedKey}:particle:${index}`, 7) < (primary ? 0.18 : 0.22);
+
+        return {
+            index,
+            t,
+            lateralOffset,
+            thickness,
+            opacity,
+            segmentLength,
+            delay: seededRange(`${seedKey}:particle:${index}`, -2.4, 0, 6),
+            sample,
+            hidden
+        };
+    }).filter((descriptor) => !descriptor.hidden);
+}
+
+function describeTrailSegment(geometry, descriptor) {
+    const shiftedX = descriptor.sample.x + descriptor.sample.normalX * descriptor.lateralOffset;
+    const shiftedY = descriptor.sample.y + descriptor.sample.normalY * descriptor.lateralOffset;
+    const tangentLength = Math.max(Math.hypot(descriptor.sample.dx, descriptor.sample.dy), 0.0001);
+    const tangentX = descriptor.sample.dx / tangentLength;
+    const tangentY = descriptor.sample.dy / tangentLength;
+    const halfLength = descriptor.segmentLength / 2;
+
+    return {
+        x1: shiftedX - tangentX * halfLength,
+        y1: shiftedY - tangentY * halfLength,
+        x2: shiftedX + tangentX * halfLength,
+        y2: shiftedY + tangentY * halfLength,
+        cx: shiftedX,
+        cy: shiftedY
+    };
 }
 
 function getOrganicMotionStyle(node) {
@@ -530,14 +743,122 @@ function renderOverlayPointAttrs(mapType, x, y, kind = "text") {
     return `x="${point.x.toFixed(1)}" y="${point.y.toFixed(1)}" data-map-x="${x}" data-map-y="${y}"`;
 }
 
+function getBeaconGeometry(anchorX, anchorY, options = {}) {
+    const height = options.height || 28;
+    const width = options.width || 6;
+    const lean = options.lean || 0;
+    const tipX = anchorX + width * lean;
+    const tipY = anchorY - height;
+    const baseY = anchorY - (options.baseLift || 1.2);
+    const leftX = anchorX - width * 0.62;
+    const rightX = anchorX + width * 0.9;
+    const highlightLeftX = anchorX - width * 0.08;
+    const highlightRightX = anchorX + width * 0.3;
+
+    return {
+        shadowPath: `M ${leftX.toFixed(2)} ${baseY.toFixed(2)} L ${tipX.toFixed(2)} ${tipY.toFixed(2)} L ${rightX.toFixed(2)} ${baseY.toFixed(2)} Z`,
+        corePath: `M ${anchorX.toFixed(2)} ${(baseY - 0.8).toFixed(2)} L ${highlightLeftX.toFixed(2)} ${(tipY + height * 0.06).toFixed(2)} L ${highlightRightX.toFixed(2)} ${baseY.toFixed(2)} Z`
+    };
+}
+
+function renderOverlayBeaconPoint(mapType, x, y, options = {}) {
+    const point = transformMapPoint(mapType, x, y);
+    const height = options.height || 18;
+    const width = options.width || 4.2;
+    const lean = options.lean || 0;
+    const ringRadius = options.ringRadius || 1.9;
+    const coreRadius = options.coreRadius || 0.95;
+    const hitRadius = options.hitRadius || Math.max(8.5, width * 2.6);
+    const geometry = getBeaconGeometry(point.x, point.y, { height, width, lean });
+    const tooltip = options.tooltip || "";
+    const linkEntries = options.linkEntries || [];
+    const focusEntries = options.focusEntries || [];
+    const color = options.color || "rgba(245,250,255,0.96)";
+
+    return `
+        <g class="overlay-beacon-point ${options.className || ""}" data-tooltip="${escapeAttr(tooltip)}" ${renderLinkKeysAttr(linkEntries)} ${renderFocusKeysAttr(focusEntries)}>
+            <path
+                class="overlay-beacon overlay-beacon--shadow"
+                d="${geometry.shadowPath}"
+                fill="rgba(255,255,255,0.16)"
+                data-overlay-beacon-kind="shadow"
+                data-map-anchor-x="${x}"
+                data-map-anchor-y="${y}"
+                data-beacon-height="${height}"
+                data-beacon-width="${width}"
+                data-beacon-lean="${lean}"
+            ></path>
+            <path
+                class="overlay-beacon overlay-beacon--core"
+                d="${geometry.corePath}"
+                fill="rgba(255,255,255,0.9)"
+                data-overlay-beacon-kind="core"
+                data-map-anchor-x="${x}"
+                data-map-anchor-y="${y}"
+                data-beacon-height="${height}"
+                data-beacon-width="${width}"
+                data-beacon-lean="${lean}"
+            ></path>
+            <circle class="overlay-beacon-hitarea" ${renderOverlayPointAttrs(mapType, x, y, "circle")} r="${hitRadius}"></circle>
+            <circle class="overlay-beacon-ring" ${renderOverlayPointAttrs(mapType, x, y, "circle")} r="${ringRadius}" fill="rgba(4,8,16,0.72)" stroke="rgba(210,228,255,0.56)" stroke-width="1.25"></circle>
+            <circle class="overlay-beacon-core" ${renderOverlayPointAttrs(mapType, x, y, "circle")} r="${coreRadius}" fill="${color}"></circle>
+        </g>
+    `;
+}
+
 function buildOverlayCurvePath(mapType, from, to, lift) {
     const start = transformMapPoint(mapType, from.x, from.y);
     const end = transformMapPoint(mapType, to.x, to.y);
     return curvedPath(start, end, lift);
 }
 
+function buildOverlayCurveGeometry(mapType, from, to, lift) {
+    const start = transformMapPoint(mapType, from.x, from.y);
+    const end = transformMapPoint(mapType, to.x, to.y);
+    return getLiftedQuadraticGeometry(start, end, lift);
+}
+
 function renderOverlayCurveAttrs(mapType, from, to, lift) {
     return `d="${buildOverlayCurvePath(mapType, from, to, lift)}" data-overlay-path="quadratic" data-map-from-x="${from.x}" data-map-from-y="${from.y}" data-map-to-x="${to.x}" data-map-to-y="${to.y}" data-map-lift="${lift}"`;
+}
+
+function renderOverlayTechTrail(mapType, from, to, lift, options = {}) {
+    const geometry = buildOverlayCurveGeometry(mapType, from, to, lift);
+    const distance = Math.hypot(geometry.to.x - geometry.from.x, geometry.to.y - geometry.from.y);
+    const seedKey = options.seedKey || `${mapType}:${from.x},${from.y}:${to.x},${to.y}`;
+    const color = options.color || "rgba(255,255,255,0.9)";
+    const glowColor = options.glowColor || colorWithAlpha(color, 0.18);
+    const ribbonColor = options.ribbonColor || colorWithAlpha(color, 0.1);
+    const coreWidth = options.coreWidth || 0.44;
+    const glowWidth = options.glowWidth || 4.6;
+    const ribbonWidth = options.ribbonWidth || 10.8;
+    const tooltip = options.tooltip || "";
+    const linkEntries = options.linkEntries || [];
+    const focusEntries = options.focusEntries || [];
+    const particles = buildTechTrailParticleDescriptors(seedKey, geometry, {
+        context: options.context || "main",
+        primary: options.primary !== false,
+        distance
+    }).map((descriptor) => {
+        const segment = describeTrailSegment(geometry, descriptor);
+        const baseAttrs = `data-overlay-particle="trail" data-map-from-x="${from.x}" data-map-from-y="${from.y}" data-map-to-x="${to.x}" data-map-to-y="${to.y}" data-map-lift="${lift}" data-map-particle-t="${descriptor.t.toFixed(5)}" data-map-particle-offset="${descriptor.lateralOffset.toFixed(3)}" data-map-particle-length="${descriptor.segmentLength.toFixed(3)}"`;
+        return `
+            <g class="network-edge-particle-cluster route-tech-particle-cluster" style="--spark-delay:${descriptor.delay.toFixed(2)}s" aria-hidden="true">
+                <line class="network-edge-particle network-edge-particle--blur route-tech-particle route-tech-particle--blur" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${glowColor}" stroke-width="${(descriptor.thickness * 2.5).toFixed(2)}" stroke-linecap="round" opacity="${(descriptor.opacity * 0.28).toFixed(3)}" ${baseAttrs}></line>
+                <line class="network-edge-particle route-tech-particle" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${color}" stroke-width="${descriptor.thickness.toFixed(2)}" stroke-linecap="round" opacity="${descriptor.opacity.toFixed(3)}" ${baseAttrs}></line>
+            </g>
+        `;
+    }).join("");
+
+    return `
+        <g class="route-tech-bundle ${options.bundleClass || ""}" data-tooltip="${escapeAttr(tooltip)}" ${renderLinkKeysAttr(linkEntries)} ${renderFocusKeysAttr(focusEntries)}>
+            <path class="route route-tech route-tech--ribbon" stroke="${ribbonColor}" stroke-width="${ribbonWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
+            <path class="route route-tech route-tech--glow" stroke="${glowColor}" stroke-width="${glowWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
+            <path class="route route-tech route-tech--core" stroke="${color}" stroke-width="${coreWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
+            <g class="route-tech-particles">${particles}</g>
+            <path class="route-tech-hitarea" ${renderOverlayCurveAttrs(mapType, from, to, lift)} aria-hidden="true"></path>
+        </g>
+    `;
 }
 
 function applyMapTransform(mapType) {
@@ -550,6 +871,7 @@ function applyMapTransform(mapType) {
 
     syncMapDetail(mapType);
     syncMapOverlays(mapType);
+    syncLocalStaticArtifacts(mapType);
     syncScaledLabels(mapType);
 
     if (readout) {
@@ -592,6 +914,73 @@ function syncMapOverlays(mapType) {
         };
         const lift = Number(element.dataset.mapLift || 0);
         element.setAttribute("d", buildOverlayCurvePath(mapType, from, to, lift));
+    });
+
+    svg.querySelectorAll('[data-overlay-particle="trail"]').forEach((element) => {
+        const from = {
+            x: Number(element.dataset.mapFromX),
+            y: Number(element.dataset.mapFromY)
+        };
+        const to = {
+            x: Number(element.dataset.mapToX),
+            y: Number(element.dataset.mapToY)
+        };
+        const lift = Number(element.dataset.mapLift || 0);
+        const geometry = buildOverlayCurveGeometry(mapType, from, to, lift);
+        const descriptor = {
+            t: Number(element.dataset.mapParticleT || 0.5),
+            lateralOffset: Number(element.dataset.mapParticleOffset || 0),
+            segmentLength: Number(element.dataset.mapParticleLength || 8),
+            sample: sampleQuadraticPoint(geometry, Number(element.dataset.mapParticleT || 0.5))
+        };
+        const segment = describeTrailSegment(geometry, descriptor);
+        element.setAttribute("x1", segment.x1.toFixed(2));
+        element.setAttribute("y1", segment.y1.toFixed(2));
+        element.setAttribute("x2", segment.x2.toFixed(2));
+        element.setAttribute("y2", segment.y2.toFixed(2));
+    });
+
+    svg.querySelectorAll("[data-overlay-beacon-kind]").forEach((element) => {
+        const anchorX = Number(element.dataset.mapAnchorX);
+        const anchorY = Number(element.dataset.mapAnchorY);
+        const height = Number(element.dataset.beaconHeight || 28);
+        const width = Number(element.dataset.beaconWidth || 6);
+        const lean = Number(element.dataset.beaconLean || 0);
+        const point = transformMapPoint(mapType, anchorX, anchorY);
+        const geometry = getBeaconGeometry(point.x, point.y, { height, width, lean });
+        element.setAttribute(
+            "d",
+            element.dataset.overlayBeaconKind === "core" ? geometry.corePath : geometry.shadowPath
+        );
+    });
+}
+
+function syncLocalStaticArtifacts(mapType) {
+    if (mapType !== "local-main" && !String(mapType).startsWith("local-inset-")) {
+        return;
+    }
+
+    const svg = document.querySelector(`[data-map-svg="${mapType}"]`);
+    const scale = state.mapViews[mapType]?.scale || 1;
+
+    if (!svg) {
+        return;
+    }
+
+    svg.querySelectorAll("[data-static-anchor-x][data-static-anchor-y]").forEach((element) => {
+        const anchorX = Number(element.dataset.staticAnchorX);
+        const anchorY = Number(element.dataset.staticAnchorY);
+
+        if (scale <= 1.001) {
+            element.removeAttribute("transform");
+            return;
+        }
+
+        const inverse = 1 / scale;
+        element.setAttribute(
+            "transform",
+            `translate(${anchorX.toFixed(2)} ${anchorY.toFixed(2)}) scale(${inverse.toFixed(4)}) translate(${-anchorX.toFixed(2)} ${-anchorY.toFixed(2)})`
+        );
     });
 }
 
@@ -1025,57 +1414,61 @@ function renderTimelineChart(place) {
 
 function renderDistanceChart(place, visibleContext) {
     const width = 760;
-    const height = 230;
-    const padding = { top: 24, right: 24, bottom: 44, left: 52 };
+    const height = 250;
+    const padding = { top: 26, right: 30, bottom: 56, left: 54 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
-    const categories = ["short", "medium", "long"];
-    const maxValue = Math.max(
-        ...categories.flatMap((category) =>
-            ERAS.map((era) => visibleContext.distanceBars[category][era.key])
-        ),
-        1
-    ) + 1;
-    const groupWidth = innerWidth / categories.length;
-    const barWidth = 34;
+    const { bins, meanDistanceKm, maxDistanceKm, stepKm } = visibleContext.distanceHistogram;
+    const maxValue = Math.max(...bins.map((bin) => bin.count), 1);
+    const slotWidth = bins.length ? innerWidth / bins.length : innerWidth;
+    const barWidth = Math.min(78, Math.max(24, slotWidth * 0.64));
+    const topLine = bins
+        .map((bin, index) => {
+            const x = padding.left + index * slotWidth + slotWidth / 2;
+            const y = padding.top + innerHeight - (bin.count / maxValue) * innerHeight;
+            return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+        })
+        .join(" ");
+    const countTicks = [0, Math.max(1, Math.round(maxValue / 2)), maxValue];
+    const labelEvery = bins.length > 8 ? 2 : 1;
 
     return `
         <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Distance chart">
             <rect class="plot-surface" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="24"></rect>
-            ${buildGrid(width, height, 90)}
+            <rect class="plot-frame-inner" x="${padding.left}" y="${padding.top}" width="${innerWidth}" height="${innerHeight}" rx="18"></rect>
+            ${buildGrid(width, height, 88)}
             <line class="grid-line" x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}"></line>
             <line class="grid-line" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}"></line>
-            ${categories
-                .map((category, groupIndex) => {
-                    const groupStart = padding.left + groupIndex * groupWidth + groupWidth / 2 - 55;
-                    return ERAS.map((era, eraIndex) => {
-                        const value = visibleContext.distanceBars[category][era.key];
-                        const x = groupStart + eraIndex * (barWidth + 10);
-                        const y = padding.top + innerHeight - (value / maxValue) * innerHeight;
-                        const heightValue = (value / maxValue) * innerHeight;
-                        return `
-                            <rect class="bar" x="${x}" y="${y}" width="${barWidth}" height="${heightValue}" rx="12" fill="${hexToRgba(era.color, 0.3)}" stroke="${era.color}"></rect>
-                            <text class="chart-note" x="${x + barWidth / 2}" y="${y - 8}" text-anchor="middle">${value}</text>
-                        `;
-                    }).join("");
+            ${bins.length ? `<path class="hist-line" d="${topLine}"></path>` : ""}
+            ${bins
+                .map((bin, index) => {
+                    const barX = padding.left + index * slotWidth + slotWidth / 2 - barWidth / 2;
+                    const barHeight = (bin.count / maxValue) * innerHeight;
+                    const barY = padding.top + innerHeight - barHeight;
+                    const binCenter = bin.startKm + stepKm / 2;
+                    const normalized = maxDistanceKm > 0 ? binCenter / Math.max(maxDistanceKm, stepKm) : 0;
+                    const strokeColor = mixColors("#63ebff", "#ff4fb8", normalized, 0.96);
+                    const fillColor = mixColors("#63ebff", "#ff4fb8", normalized, 0.18);
+                    const label = `${Math.round(bin.startKm)}-${Math.round(bin.endKm)}`;
+                    return `
+                        <rect class="hist-bar-glow" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(barHeight, 4)}" rx="16" fill="${strokeColor}" opacity="0.12"></rect>
+                        <rect class="hist-bar" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(barHeight, 4)}" rx="16" fill="${fillColor}" stroke="${strokeColor}"></rect>
+                        ${bin.count > 0 ? `<text class="chart-value-label" x="${barX + barWidth / 2}" y="${barY - 8}" text-anchor="middle">${bin.count}</text>` : `<text class="chart-note" x="${barX + barWidth / 2}" y="${padding.top + innerHeight + 20}" text-anchor="middle">0</text>`}
+                        ${index % labelEvery === 0 ? `<text class="chart-note" x="${barX + barWidth / 2}" y="${height - 16}" text-anchor="middle">${label}</text>` : ""}
+                    `;
                 })
                 .join("")}
-            ${categories
-                .map((category, index) => {
-                    const x = padding.left + index * groupWidth + groupWidth / 2;
-                    return `<text class="chart-note" x="${x}" y="${height - 14}" text-anchor="middle">${category[0].toUpperCase()}${category.slice(1)}</text>`;
-                })
-                .join("")}
-            ${[0, Math.round(maxValue / 2), maxValue]
+            ${countTicks
                 .map((tick) => {
                     const y = padding.top + innerHeight - (tick / maxValue) * innerHeight;
                     return `<text class="chart-note" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${tick}</text>`;
                 })
                 .join("")}
-            <text class="axis-label" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">Distance from entry corridor</text>
+            <text class="axis-label chart-axis-strong" x="${padding.left}" y="18">Records</text>
+            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 4}" text-anchor="end">Distance from entry corridor (km)</text>
+            <text class="chart-note" x="${width - padding.right}" y="22" text-anchor="end">Mean ${Math.round(meanDistanceKm || 0)} km</text>
             ${
-                !visibleContext.visiblePoints.length
+                !bins.length
                     ? `<text class="chart-note" x="${width / 2}" y="${height / 2}" text-anchor="middle">No visible records remain under the current filters.</text>`
                     : ""
             }
@@ -1175,12 +1568,46 @@ function buildRegionCountMap(points) {
     }, new Map());
 }
 
+function buildStateDistanceMap(points) {
+    return points.reduce((memo, point) => {
+        const entry = memo.get(point.state) || {
+            state: point.state,
+            count: 0,
+            totalDistanceKm: 0,
+            minDistanceKm: Number.POSITIVE_INFINITY,
+            maxDistanceKm: 0,
+            region: point.region
+        };
+
+        entry.count += 1;
+        entry.totalDistanceKm += point.distanceKm || 0;
+        entry.minDistanceKm = Math.min(entry.minDistanceKm, point.distanceKm || 0);
+        entry.maxDistanceKm = Math.max(entry.maxDistanceKm, point.distanceKm || 0);
+        entry.region = point.region;
+        memo.set(point.state, entry);
+        return memo;
+    }, new Map());
+}
+
 function sortCountEntries(countMap, keyName) {
     return Array.from(countMap.entries())
         .map(([name, count]) => ({ [keyName]: name, count }))
         .sort((entryA, entryB) =>
             entryB.count - entryA.count ||
             String(entryA[keyName]).localeCompare(String(entryB[keyName]))
+        );
+}
+
+function buildDistanceStateEntries(points) {
+    return Array.from(buildStateDistanceMap(points).values())
+        .map((entry) => ({
+            ...entry,
+            avgDistanceKm: entry.count ? entry.totalDistanceKm / entry.count : 0
+        }))
+        .sort((entryA, entryB) =>
+            entryA.avgDistanceKm - entryB.avgDistanceKm ||
+            entryB.count - entryA.count ||
+            entryA.state.localeCompare(entryB.state)
         );
 }
 
@@ -1194,10 +1621,52 @@ function buildDistanceBars(points) {
     }, {});
 }
 
+function getNiceDistanceStep(maxDistanceKm) {
+    const target = Math.max(maxDistanceKm / 6, 1);
+    const steps = [50, 100, 200, 250, 400, 500, 750, 1000, 1500, 2000, 2500, 3000];
+    return steps.find((step) => step >= target) || Math.ceil(target / 1000) * 1000;
+}
+
+function buildDistanceHistogram(points) {
+    if (!points.length) {
+        return {
+            bins: [],
+            stepKm: 100,
+            maxDistanceKm: 0,
+            meanDistanceKm: 0
+        };
+    }
+
+    const maxDistanceKm = Math.max(...points.map((point) => point.distanceKm || 0), 0);
+    const meanDistanceKm = points.reduce((sum, point) => sum + (point.distanceKm || 0), 0) / points.length;
+    const stepKm = getNiceDistanceStep(maxDistanceKm || 1);
+    const binCount = Math.max(1, Math.ceil((maxDistanceKm || stepKm) / stepKm));
+    const bins = Array.from({ length: binCount }, (_, index) => ({
+        startKm: index * stepKm,
+        endKm: (index + 1) * stepKm,
+        count: 0
+    }));
+
+    points.forEach((point) => {
+        const distanceKm = point.distanceKm || 0;
+        const binIndex = Math.min(Math.floor(distanceKm / stepKm), bins.length - 1);
+        bins[binIndex].count += 1;
+    });
+
+    return {
+        bins,
+        stepKm,
+        maxDistanceKm,
+        meanDistanceKm
+    };
+}
+
 function buildVisibleContext(place) {
     const visiblePoints = getVisibleUsPoints(place);
     const stateCounts = buildStateCountMap(visiblePoints);
     const regionCounts = buildRegionCountMap(visiblePoints);
+    const distanceStateEntries = buildDistanceStateEntries(visiblePoints);
+    const distanceHistogram = buildDistanceHistogram(visiblePoints);
     const distanceBars = buildDistanceBars(visiblePoints);
 
     visiblePoints.forEach((point) => {
@@ -1221,6 +1690,8 @@ function buildVisibleContext(place) {
         regionCounts,
         topStates,
         topRegions,
+        distanceStateEntries,
+        distanceHistogram,
         distanceBars,
         rankPoints
     };
@@ -1432,9 +1903,19 @@ function handleVizPointerLeave() {
 }
 
 function curvedPath(from, to, lift = 120) {
+    return getLiftedQuadraticGeometry(from, to, lift).path;
+}
+
+function getLiftedQuadraticGeometry(from, to, lift = 120) {
     const controlX = (from.x + to.x) / 2;
     const controlY = Math.min(from.y, to.y) - lift;
-    return `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`;
+    return {
+        path: `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`,
+        from,
+        to,
+        controlX,
+        controlY
+    };
 }
 
 function renderGlobalView(origin, place) {
@@ -1463,11 +1944,43 @@ function renderGlobalView(origin, place) {
                             ${renderWorldPolygons(origin, { mapType: "global" })}
                         </g>
                         <g class="map-overlay-layer" data-map-overlay-layer="global">
-                            <path class="route route--wide" ${renderOverlayCurveAttrs("global", origin.anchor, place.globalTarget, 132)} stroke="${origin.accent}" data-tooltip="${escapeAttr(`Global route from ${origin.name} to ${place.name}`)}" ${renderLinkKeysAttr(placeLinkEntries)} ${renderFocusKeysAttr([["focus-relation", `origin-selected:${origin.id}:${place.id}`]])}></path>
-                            <circle class="marker marker--origin" ${renderOverlayPointAttrs("global", origin.anchor.x, origin.anchor.y, "circle")} r="13" data-origin="${escapeAttr(origin.name)}" data-tooltip="${escapeAttr(`${origin.anchor.label} · selected origin group`)}" ${renderLinkKeysAttr(originLinkEntries)} ${renderFocusKeysAttr([["focus-origin", origin.id]])}></circle>
-                            <circle class="marker" ${renderOverlayPointAttrs("global", place.globalTarget.x, place.globalTarget.y, "circle")} r="12" data-tooltip="${escapeAttr(place.label)}" ${renderLinkKeysAttr(placeLinkEntries)} ${renderFocusKeysAttr([["focus-selected-place", place.id]])}></circle>
-                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("global", origin.anchor.x + 18, origin.anchor.y - 8)} data-origin="${escapeAttr(origin.name)}" data-tooltip="${escapeAttr(`${origin.anchor.label} · selected origin group`)}" ${renderLinkKeysAttr(originLinkEntries)} ${renderFocusKeysAttr([["focus-origin", origin.id]])}>${origin.anchor.label}</text>
-                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("global", place.globalTarget.x + 18, place.globalTarget.y + 4)} data-tooltip="${escapeAttr(place.label)}" ${renderLinkKeysAttr(placeLinkEntries)} ${renderFocusKeysAttr([["focus-selected-place", place.id]])}>${place.label}</text>
+                            ${renderOverlayTechTrail("global", origin.anchor, place.globalTarget, 132, {
+                                seedKey: `global:${origin.id}:${place.id}`,
+                                color: "rgba(245, 250, 255, 0.96)",
+                                glowColor: colorWithAlpha(origin.accent, 0.26),
+                                ribbonColor: colorWithAlpha(origin.accent, 0.12),
+                                tooltip: `Global route from ${origin.name} to ${place.name}`,
+                                linkEntries: placeLinkEntries,
+                                focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]],
+                                primary: true,
+                                bundleClass: "route-tech-bundle--global"
+                            })}
+                            ${renderOverlayBeaconPoint("global", origin.anchor.x, origin.anchor.y, {
+                                className: "overlay-beacon-point--global overlay-beacon-point--origin",
+                                height: 16,
+                                width: 4.1,
+                                lean: -0.06,
+                                ringRadius: 1.7,
+                                coreRadius: 0.92,
+                                color: "rgba(246,251,255,0.98)",
+                                tooltip: `${origin.anchor.label} · selected origin group`,
+                                linkEntries: originLinkEntries,
+                                focusEntries: [["focus-origin", origin.id]]
+                            })}
+                            ${renderOverlayBeaconPoint("global", place.globalTarget.x, place.globalTarget.y, {
+                                className: "overlay-beacon-point--global",
+                                height: 15,
+                                width: 3.8,
+                                lean: 0.04,
+                                ringRadius: 1.55,
+                                coreRadius: 0.84,
+                                color: colorWithAlpha(origin.accent, 0.94),
+                                tooltip: place.label,
+                                linkEntries: placeLinkEntries,
+                                focusEntries: [["focus-selected-place", place.id]]
+                            })}
+                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("global", origin.anchor.x + 14, origin.anchor.y - 10)} data-origin="${escapeAttr(origin.name)}" data-tooltip="${escapeAttr(`${origin.anchor.label} · selected origin group`)}" ${renderLinkKeysAttr(originLinkEntries)} ${renderFocusKeysAttr([["focus-origin", origin.id]])}>${origin.anchor.label}</text>
+                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("global", place.globalTarget.x + 14, place.globalTarget.y + 2)} data-tooltip="${escapeAttr(place.label)}" ${renderLinkKeysAttr(placeLinkEntries)} ${renderFocusKeysAttr([["focus-selected-place", place.id]])}>${place.label}</text>
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("global", 62, 86)}>North America</text>
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("global", 740, 82)}>Europe / Mediterranean</text>
                         </g>
@@ -1506,35 +2019,43 @@ function renderUsaView(origin, place) {
     const { visiblePoints, stateCounts } = visibleContext;
     const activeStates = new Set(visiblePoints.map((point) => point.state));
     const clipId = "map-clip-usa-main";
+    const maxDistanceKm = Math.max(1, ...visiblePoints.map((point) => point.distanceKm || 0));
+    const getDistanceColor = (distanceKm) =>
+        mixColors("#63ebff", "#ff4fb8", (distanceKm || 0) / maxDistanceKm, 0.96);
 
     const routes = visiblePoints
         .map((point) => {
             const target = { x: point.x, y: point.y };
-            return `
-                <path
-                    class="route"
-                    ${renderOverlayCurveAttrs("usa", hub, target, 74)}
-                    stroke="${ERAS.find((era) => era.key === point.era).color}"
-                    data-tooltip="${escapeAttr(`${point.label} diffusion route`)}"
-                    ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])}
-                    ${renderFocusKeysAttr([["focus-route", point.id]])}
-                ></path>
-            `;
+            const distanceColor = getDistanceColor(point.distanceKm);
+            return renderOverlayTechTrail("usa", hub, target, 74, {
+                seedKey: `usa:${point.id}`,
+                color: distanceColor,
+                glowColor: colorWithAlpha(distanceColor, 0.22),
+                ribbonColor: colorWithAlpha(distanceColor, 0.08),
+                tooltip: `${point.label} diffusion route`,
+                linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
+                focusEntries: [["focus-route", point.id]],
+                primary: false,
+                bundleClass: "route-tech-bundle--usa"
+            });
         })
         .join("");
 
     const points = visiblePoints
-        .map((point) => `
-            <circle
-                class="dot-point"
-                ${renderOverlayPointAttrs("usa", point.x, point.y, "circle")}
-                r="${point.radius}"
-                fill="${REGION_COLORS[point.region] || origin.accent}"
-                data-tooltip="${escapeAttr(point.tooltip)}"
-                ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])}
-                ${renderFocusKeysAttr([["focus-point", point.id]])}
-            ></circle>
-        `)
+        .map((point) =>
+            renderOverlayBeaconPoint("usa", point.x, point.y, {
+                className: "overlay-beacon-point--usa",
+                height: 12,
+                width: 2.8,
+                lean: -0.05,
+                ringRadius: 1.38,
+                coreRadius: 0.72,
+                color: getDistanceColor(point.distanceKm),
+                tooltip: point.tooltip,
+                linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
+                focusEntries: [["focus-point", point.id]]
+            })
+        )
         .join("");
 
     return `
@@ -1554,8 +2075,19 @@ function renderUsaView(origin, place) {
                             ${renderUsaPolygons(activeStates, stateCounts, { mapType: "usa" })}
                         </g>
                         <g class="map-overlay-layer" data-map-overlay-layer="usa">
-                            <circle class="marker marker--hub" ${renderOverlayPointAttrs("usa", hub.x, hub.y, "circle")} r="12" data-tooltip="${escapeAttr(origin.entryHub.label)}" ${renderLinkKeysAttr([["origin", origin.id]])} ${renderFocusKeysAttr([["focus-origin", origin.id]])}></circle>
-                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 10, hub.y - 18)} text-anchor="end" data-tooltip="${escapeAttr(origin.entryHub.label)}" ${renderLinkKeysAttr([["origin", origin.id]])} ${renderFocusKeysAttr([["focus-origin", origin.id]])}>${origin.entryHub.label}</text>
+                            ${renderOverlayBeaconPoint("usa", hub.x, hub.y, {
+                                className: "overlay-beacon-point--hub",
+                                height: 16,
+                                width: 4,
+                                lean: 0.02,
+                                ringRadius: 1.7,
+                                coreRadius: 0.9,
+                                color: "rgba(246,251,255,0.98)",
+                                tooltip: origin.entryHub.label,
+                                linkEntries: [["origin", origin.id]],
+                                focusEntries: [["focus-origin", origin.id]]
+                            })}
+                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 8, hub.y - 14)} text-anchor="end" data-tooltip="${escapeAttr(origin.entryHub.label)}" ${renderLinkKeysAttr([["origin", origin.id]])} ${renderFocusKeysAttr([["focus-origin", origin.id]])}>${origin.entryHub.label}</text>
                             ${routes}
                             ${points}
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("usa", 118, 116)}>Pacific</text>
@@ -1576,7 +2108,7 @@ function renderUsaView(origin, place) {
                     <p class="annotation-card__eyebrow">How To Read This</p>
                     <p>
                         The hub is a hand-picked entry corridor for the selected origin group. Each visible dot is a real GNIS record,
-                        and the curved routes are a symbolic diffusion layer drawn from that corridor to each occurrence.
+                        and the curved routes are a symbolic diffusion layer drawn from that corridor to each occurrence. Cooler tones are nearer to the corridor and warmer tones are farther away.
                     </p>
                 </article>
                 <article class="annotation-card">
@@ -1598,10 +2130,10 @@ function buildLocalNetwork(origin, place) {
         x: 500 + seededRange(`${seedRoot}:origin-x`, -24, 24),
         y: 84 + seededRange(`${seedRoot}:origin-y`, -10, 10),
         size: 16,
-        color: "#223249",
+        color: ORIGIN_NODE_COLOR,
         label: origin.name,
         detail: "origin group",
-        tooltip: `${origin.name} is the origin anchor for this network`,
+        tooltip: "",
         linkEntries: [["origin", origin.id]],
         focusEntries: [["focus-origin", origin.id]],
         driftX: seededRange(`${seedRoot}:origin-drift`, -4, 4, 1),
@@ -1619,7 +2151,7 @@ function buildLocalNetwork(origin, place) {
         label: place.name,
         detail: `${place.totalRecords} GNIS records`,
         selected: true,
-        tooltip: `${place.name} is the current main-view place`,
+        tooltip: "",
         linkEntries: [["place", place.id], ["origin", origin.id]],
         focusEntries: [["focus-selected-place", place.id]],
         driftX: seededRange(`${seedRoot}:selected-drift`, -6, 6, 1),
@@ -1662,131 +2194,57 @@ function buildLocalNetwork(origin, place) {
             detail: `${candidate.totalRecords} records`,
             group: "sibling",
             placeId: candidate.id,
-            tooltip: `Click to switch the main view to ${candidate.name}`,
+            tooltip: "",
             linkEntries: [["place", candidate.id], ["origin", origin.id]],
             focusEntries: [["focus-sibling-place", candidate.id]]
         };
     });
 
-    const visibleStateEntries = visibleContext.topStates.slice(0, NETWORK_LAYOUT_LIMITS.mainStateNodes);
-    const hiddenStateEntries = visibleContext.topStates.slice(NETWORK_LAYOUT_LIMITS.mainStateNodes);
-    const stateNodes = visibleStateEntries.map((entry, index) => {
-        const placement = buildOrganicFanPlacement(
+    const maxDistanceKm = Math.max(
+        1,
+        ...visibleContext.distanceStateEntries.map((entry) => entry.avgDistanceKm || 0)
+    );
+    const stateNodes = visibleContext.distanceStateEntries.map((entry, index) => {
+        const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
+        const placement = buildDistancePlacement(
             `${seedRoot}:state:${entry.state}`,
             index,
-            Math.max(visibleStateEntries.length, 1),
+            Math.max(visibleContext.distanceStateEntries.length, 1),
             {
                 cx: selectedNode.x,
-                cy: selectedNode.y - 2,
-                angleStart: -50,
-                angleEnd: 74,
-                angleJitter: 5,
-                perRing: 5,
-                radiusStart: 248,
-                radiusStep: 50,
-                radiusJitter: 8,
-                driftX: 8,
-                driftY: 9,
+                cy: selectedNode.y + 10,
+                angleStart: -48,
+                angleEnd: 124,
+                angleJitter: 3.5,
+                radius: 162 + normalizedDistance * 204,
+                radiusJitter: 7,
+                driftX: 7,
+                driftY: 7,
                 durationMin: 11.5,
                 durationMax: 17.5,
                 delayMin: -7,
                 delayMax: 0
             }
         );
+        const distanceColor = mixColors("#63ebff", "#ff4fb8", normalizedDistance, 0.96);
 
         return {
             id: `state-${entry.state.toLowerCase().replace(/\s+/g, "-")}`,
             kind: "state",
             ...placement,
-            size: Math.min(13 + entry.count * 3.5, 22),
-            color: REGION_COLORS[
-                place.records.find((record) => record.state === entry.state)?.region || "south"
-            ],
+            size: Math.min(12 + entry.count * 2.6, 18),
+            color: distanceColor,
             label: entry.state,
-            detail: entry.count > 1 ? `${entry.count} visible` : "",
+            detail: `${Math.round(entry.avgDistanceKm)} km · ${entry.count}`,
             count: entry.count,
             group: "state",
             state: entry.state,
-            tooltip: `${entry.state} has ${entry.count} visible record${entry.count === 1 ? "" : "s"}${state.focusedState === entry.state ? " · click to clear focus" : " · click to focus this state"}`,
+            avgDistanceKm: entry.avgDistanceKm,
+            minDistanceKm: entry.minDistanceKm,
+            maxDistanceKm: entry.maxDistanceKm,
+            tooltip: "",
             linkEntries: [["state", entry.state], ["place", place.id], ["origin", origin.id]],
             focusEntries: [["focus-state", entry.state]]
-        };
-    });
-
-    const hiddenStateCount = hiddenStateEntries.reduce((sum, entry) => sum + entry.count, 0);
-    const hiddenStateNode = hiddenStateEntries.length
-        ? {
-            id: "state-summary-hidden",
-            kind: "state-summary",
-            ...buildOrganicArcPlacement(
-                `${seedRoot}:state-summary`,
-                0,
-                1,
-                {
-                    cx: selectedNode.x,
-                    cy: selectedNode.y + 14,
-                    angleStart: 38,
-                    angleEnd: 38,
-                    angleJitter: 4,
-                    radiusMin: 320,
-                    radiusMax: 348,
-                    driftX: 6,
-                    driftY: 7,
-                    durationMin: 11,
-                    durationMax: 15.5,
-                    delayMin: -6,
-                    delayMax: 0
-                }
-            ),
-            size: 16 + Math.min(hiddenStateEntries.length, 5),
-            color: hexToRgba(origin.accent, 0.82),
-            label: `+${hiddenStateEntries.length} more`,
-            detail: `${hiddenStateCount} visible`,
-            tooltip: `${hiddenStateEntries.length} lower-frequency states are collapsed here to keep the network readable.`,
-            linkEntries: [["place", place.id], ["origin", origin.id]],
-            focusEntries: [["focus-state-summary", `${place.id}:${hiddenStateEntries.length}`]]
-        }
-        : null;
-
-    const regionList = visibleContext.topRegions.map((entry) => [entry.region, entry.count]);
-    const regionCount = Math.max(regionList.length, 1);
-    const regionEntries = regionList.map(([region, count], index) => {
-        const placement = buildOrganicFanPlacement(
-            `${seedRoot}:region:${region}`,
-            index,
-            regionCount,
-            {
-                cx: selectedNode.x,
-                cy: selectedNode.y + 12,
-                angleStart: 62,
-                angleEnd: 118,
-                angleJitter: 6,
-                perRing: 4,
-                radiusStart: 208,
-                radiusStep: 44,
-                radiusJitter: 6,
-                driftX: 7,
-                driftY: 7,
-                durationMin: 10,
-                durationMax: 15,
-                delayMin: -6,
-                delayMax: 0
-            }
-        );
-
-        return {
-            id: `region-${region}`,
-            kind: "region",
-            ...placement,
-            size: Math.min(14 + count * 2, 26),
-            color: REGION_COLORS[region],
-            label: DATA.meta.regionLabels[region],
-            detail: `${count} visible`,
-            group: "region",
-            region,
-            tooltip: `${DATA.meta.regionLabels[region]} contributes ${count} visible record${count === 1 ? "" : "s"}`,
-            linkEntries: [["region", region], ["place", place.id], ["origin", origin.id]],
-            focusEntries: [["focus-region", region]]
         };
     });
 
@@ -1794,9 +2252,7 @@ function buildLocalNetwork(origin, place) {
         originNode,
         selectedNode,
         ...siblingNodes,
-        ...stateNodes,
-        ...(hiddenStateNode ? [hiddenStateNode] : []),
-        ...regionEntries
+        ...stateNodes
     ];
     const edges = [];
 
@@ -1805,6 +2261,7 @@ function buildLocalNetwork(origin, place) {
         from: "origin",
         to: "selected",
         primary: true,
+        tooltip: "",
         linkEntries: [["origin", origin.id], ["place", place.id]],
         focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
     });
@@ -1813,6 +2270,7 @@ function buildLocalNetwork(origin, place) {
         from: "selected",
         to: node.id,
         primary: true,
+        tooltip: "",
         linkEntries: node.linkEntries,
         focusEntries: [["focus-edge", `selected-sibling:${node.placeId}`]]
     }));
@@ -1821,40 +2279,10 @@ function buildLocalNetwork(origin, place) {
         from: "selected",
         to: node.id,
         primary: true,
+        tooltip: "",
         linkEntries: node.linkEntries,
         focusEntries: [["focus-edge", `selected-state:${node.state}`]]
     }));
-    if (hiddenStateNode) {
-        edges.push({
-            id: "selected-state-summary-hidden",
-            from: "selected",
-            to: hiddenStateNode.id,
-            primary: true,
-            linkEntries: hiddenStateNode.linkEntries,
-            focusEntries: hiddenStateNode.focusEntries
-        });
-    }
-
-    const regionEdgeStates = stateNodes
-        .filter((node) => node.count > 1)
-        .slice(0, NETWORK_LAYOUT_LIMITS.regionEdgeStateNodes);
-    const statesForRegionEdges = regionEdgeStates.length
-        ? regionEdgeStates
-        : stateNodes.slice(0, Math.min(4, stateNodes.length));
-
-    statesForRegionEdges.forEach((node) => {
-        const linkedRegion = place.records.find((record) => record.state === node.state)?.region;
-        if (linkedRegion) {
-            edges.push({
-                id: `${node.id}-region-${linkedRegion}`,
-                from: node.id,
-                to: `region-${linkedRegion}`,
-                primary: false,
-                linkEntries: [["state", node.state], ["region", linkedRegion], ["place", place.id], ["origin", origin.id]],
-                focusEntries: [["focus-relation", `state-region:${node.state}:${linkedRegion}`]]
-            });
-        }
-    });
 
     return { nodes, edges, selectedNode, visibleCount: visibleContext.visiblePoints.length };
 }
@@ -1866,9 +2294,6 @@ function buildInsetLocalNetwork(origin, place) {
         .filter((candidate) => candidate.id !== place.id)
         .sort((placeA, placeB) => placeB.totalRecords - placeA.totalRecords)
         .slice(0, 3);
-    const topStates = visibleContext.topStates.slice(0, NETWORK_LAYOUT_LIMITS.insetStateNodes);
-    const hiddenInsetStates = visibleContext.topStates.slice(NETWORK_LAYOUT_LIMITS.insetStateNodes);
-    const topRegions = visibleContext.topRegions.slice(0, 3);
 
     const originNode = {
         id: "origin",
@@ -1876,10 +2301,10 @@ function buildInsetLocalNetwork(origin, place) {
         x: 240 + seededRange(`${seedRoot}:origin-x`, -10, 10),
         y: 42 + seededRange(`${seedRoot}:origin-y`, -6, 4),
         size: 14,
-        color: "#223249",
+        color: ORIGIN_NODE_COLOR,
         label: origin.name,
         detail: "origin group",
-        tooltip: `${origin.name} origin group`,
+        tooltip: "",
         linkEntries: [["origin", origin.id]],
         focusEntries: [["focus-origin", origin.id]],
         driftX: seededRange(`${seedRoot}:origin-drift`, -3, 3, 1),
@@ -1897,7 +2322,7 @@ function buildInsetLocalNetwork(origin, place) {
         color: origin.accent,
         label: place.name,
         detail: `${visibleContext.visiblePoints.length} visible`,
-        tooltip: `${place.name} is the current main-view place`,
+        tooltip: "",
         linkEntries: [["place", place.id], ["origin", origin.id]],
         focusEntries: [["focus-selected-place", place.id]],
         driftX: seededRange(`${seedRoot}:selected-drift`, -4, 4, 1),
@@ -1936,127 +2361,55 @@ function buildInsetLocalNetwork(origin, place) {
             color: origin.accent,
             label: candidate.name,
             detail: `${candidate.totalRecords} records`,
-            tooltip: `Click to switch the main view to ${candidate.name}`,
+            tooltip: "",
             placeId: candidate.id,
             linkEntries: [["place", candidate.id], ["origin", origin.id]],
             focusEntries: [["focus-sibling-place", candidate.id]]
         };
     });
 
-    const stateNodes = topStates.map((entry, index) => {
-        const placement = buildOrganicFanPlacement(
+    const maxDistanceKm = Math.max(
+        1,
+        ...visibleContext.distanceStateEntries.map((entry) => entry.avgDistanceKm || 0)
+    );
+    const stateNodes = visibleContext.distanceStateEntries.map((entry, index) => {
+        const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
+        const placement = buildDistancePlacement(
             `${seedRoot}:state:${entry.state}`,
             index,
-            Math.max(topStates.length, 1),
+            Math.max(visibleContext.distanceStateEntries.length, 1),
             {
                 cx: selectedNode.x,
-                cy: selectedNode.y - 2,
-                angleStart: -40,
-                angleEnd: 56,
-                angleJitter: 5,
-                perRing: 3,
-                radiusStart: 124,
-                radiusStep: 28,
-                radiusJitter: 5,
-                driftX: 4,
-                driftY: 4,
+                cy: selectedNode.y + 8,
+                angleStart: -46,
+                angleEnd: 118,
+                angleJitter: 2.6,
+                radius: 84 + normalizedDistance * 88,
+                radiusJitter: 4,
+                driftX: 4.5,
+                driftY: 4.5,
                 durationMin: 8.5,
                 durationMax: 12.5,
                 delayMin: -5,
                 delayMax: 0
             }
         );
+        const distanceColor = mixColors("#63ebff", "#ff4fb8", normalizedDistance, 0.96);
 
         return {
             id: `state-${entry.state.toLowerCase().replace(/\s+/g, "-")}`,
             kind: "state",
             ...placement,
-            size: 13 + entry.count * 1.5,
-            color: REGION_COLORS[
-                place.records.find((record) => record.state === entry.state)?.region || "south"
-            ],
+            size: Math.min(10.8 + entry.count * 1.15, 14.4),
+            color: distanceColor,
             label: entry.state,
-            detail: entry.count > 1 ? `${entry.count} visible` : "",
+            detail: `${Math.round(entry.avgDistanceKm)} km`,
             count: entry.count,
             state: entry.state,
-            tooltip: `${entry.state} contains ${entry.count} visible record${entry.count === 1 ? "" : "s"} for ${place.name}${state.focusedState === entry.state ? " · click to clear focus" : " · click to focus this state"}`,
+            avgDistanceKm: entry.avgDistanceKm,
+            tooltip: "",
             linkEntries: [["state", entry.state], ["place", place.id], ["origin", origin.id]],
             focusEntries: [["focus-state", entry.state]]
-        };
-    });
-
-    const hiddenInsetCount = hiddenInsetStates.reduce((sum, entry) => sum + entry.count, 0);
-    const hiddenInsetNode = hiddenInsetStates.length
-        ? {
-            id: "state-summary-hidden",
-            kind: "state-summary",
-            ...buildOrganicArcPlacement(
-                `${seedRoot}:state-summary`,
-                0,
-                1,
-                {
-                    cx: selectedNode.x,
-                    cy: selectedNode.y + 8,
-                    angleStart: 34,
-                    angleEnd: 34,
-                    angleJitter: 4,
-                    radiusMin: 164,
-                    radiusMax: 178,
-                    driftX: 3,
-                    driftY: 3,
-                    durationMin: 8,
-                    durationMax: 11,
-                    delayMin: -4,
-                    delayMax: 0
-                }
-            ),
-            size: 12 + Math.min(hiddenInsetStates.length, 4),
-            color: hexToRgba(origin.accent, 0.8),
-            label: `+${hiddenInsetStates.length} more`,
-            detail: `${hiddenInsetCount} visible`,
-            tooltip: `${hiddenInsetStates.length} lower-frequency states are collapsed here in the inset view.`,
-            linkEntries: [["place", place.id], ["origin", origin.id]],
-            focusEntries: [["focus-state-summary", `${place.id}:inset:${hiddenInsetStates.length}`]]
-        }
-        : null;
-
-    const regionNodes = topRegions.map((entry, index) => {
-        const region = entry.region;
-        const count = entry.count;
-        const placement = buildOrganicFanPlacement(
-            `${seedRoot}:region:${region}`,
-            index,
-            Math.max(topRegions.length, 1),
-            {
-                cx: selectedNode.x,
-                cy: selectedNode.y + 10,
-                angleStart: 64,
-                angleEnd: 116,
-                angleJitter: 5,
-                perRing: 3,
-                radiusStart: 104,
-                radiusStep: 24,
-                radiusJitter: 4,
-                driftX: 3,
-                driftY: 3,
-                durationMin: 8,
-                durationMax: 11.5,
-                delayMin: -4,
-                delayMax: 0
-            }
-        );
-
-        return {
-            id: `region-${region}`,
-            kind: "region",
-            ...placement,
-            size: 11 + count * 1.1,
-            color: REGION_COLORS[region],
-            label: DATA.meta.regionLabels[region],
-            detail: `${count} visible`,
-            tooltip: `${DATA.meta.regionLabels[region]} contributes ${count} visible records`,
-            linkEntries: [["region", region], ["place", place.id], ["origin", origin.id]],
-            focusEntries: [["focus-region", region]]
         };
     });
 
@@ -2064,9 +2417,7 @@ function buildInsetLocalNetwork(origin, place) {
         originNode,
         selectedNode,
         ...siblingNodes,
-        ...stateNodes,
-        ...(hiddenInsetNode ? [hiddenInsetNode] : []),
-        ...regionNodes
+        ...stateNodes
     ];
     const edges = [
         {
@@ -2074,6 +2425,7 @@ function buildInsetLocalNetwork(origin, place) {
             from: "origin",
             to: "selected",
             primary: true,
+            tooltip: "",
             linkEntries: [["origin", origin.id], ["place", place.id]],
             focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
         },
@@ -2082,6 +2434,7 @@ function buildInsetLocalNetwork(origin, place) {
             from: "selected",
             to: node.id,
             primary: true,
+            tooltip: "",
             linkEntries: node.linkEntries,
             focusEntries: [["focus-edge", `selected-sibling:${node.placeId}`]]
         })),
@@ -2090,24 +2443,9 @@ function buildInsetLocalNetwork(origin, place) {
             from: "selected",
             to: node.id,
             primary: true,
+            tooltip: "",
             linkEntries: node.linkEntries,
             focusEntries: [["focus-edge", `selected-state:${node.state}`]]
-        })),
-        ...(hiddenInsetNode ? [{
-            id: "selected-state-summary-hidden",
-            from: "selected",
-            to: hiddenInsetNode.id,
-            primary: true,
-            linkEntries: hiddenInsetNode.linkEntries,
-            focusEntries: hiddenInsetNode.focusEntries
-        }] : []),
-        ...regionNodes.map((node) => ({
-            id: `selected-${node.id}`,
-            from: "selected",
-            to: node.id,
-            primary: false,
-            linkEntries: node.linkEntries,
-            focusEntries: [["focus-edge", `selected-region:${node.id}`]]
         }))
     ];
 
@@ -2129,14 +2467,119 @@ function renderNetworkEdge(edge, nodesById, context = "main") {
         context === "inset" ? 30 : 54
     );
     const direction = seededUnit(edge.id || `${from.id}:${to.id}`) > 0.5 ? 1 : -1;
+    const geometry = getCurvedNetworkGeometry(from, to, curveAmount, direction);
+    const path = geometry.path;
+    const edgeColorSource = to.color || from.color || ORIGIN_NODE_COLOR;
+    const edgeColor = edge.primary
+        ? "rgba(248, 251, 255, 0.88)"
+        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.82 : 0.9);
+    const ribbonColor = edge.primary
+        ? "rgba(248, 251, 255, 0.15)"
+        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.12 : 0.14);
+    const glowColor = edge.primary
+        ? "rgba(248, 251, 255, 0.16)"
+        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.18 : 0.2);
+    const ribbonWidth = context === "inset" ? (edge.primary ? 8.2 : 6.4) : (edge.primary ? 11.4 : 8.8);
+    const glowWidth = context === "inset" ? (edge.primary ? 3.4 : 2.8) : (edge.primary ? 4.6 : 3.6);
+    const coreWidth = context === "inset" ? 0.42 : 0.5;
+    const particleColor = edge.primary
+        ? "rgba(255, 247, 240, 0.96)"
+        : colorWithAlpha(edgeColorSource, 0.96);
+    const particleGlowColor = edge.primary
+        ? "rgba(255, 247, 240, 0.16)"
+        : colorWithAlpha(edgeColorSource, 0.11);
+    const particles = buildTechTrailParticleDescriptors(edge.id || `${from.id}:${to.id}`, geometry, {
+        context,
+        primary: edge.primary,
+        distance
+    }).map((descriptor) => {
+        const segment = describeTrailSegment(geometry, descriptor);
+        return `
+            <g class="network-edge-particle-cluster" data-static-anchor-x="${segment.cx.toFixed(2)}" data-static-anchor-y="${segment.cy.toFixed(2)}" style="--spark-delay:${descriptor.delay.toFixed(2)}s">
+                <line class="network-edge-particle network-edge-particle--blur" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleGlowColor}" stroke-width="${(descriptor.thickness * 2.45).toFixed(2)}" stroke-linecap="round" opacity="${(descriptor.opacity * 0.28).toFixed(3)}"></line>
+                <line class="network-edge-particle" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleColor}" stroke-width="${descriptor.thickness.toFixed(2)}" stroke-linecap="round" opacity="${descriptor.opacity.toFixed(3)}"></line>
+            </g>
+        `;
+    }).join("");
+    const tooltip = edge.tooltip || "";
 
     return `
-        <path
-            class="network-edge ${edge.primary ? "is-primary" : ""} ${context === "inset" ? "network-edge--inset" : ""}"
-            d="${curvedNetworkPath(from, to, curveAmount, direction)}"
-            ${renderLinkKeysAttr(edge.linkEntries)}
-            ${renderFocusKeysAttr(edge.focusEntries)}
-        ></path>
+        <g class="network-edge-bundle ${edge.primary ? "is-primary" : ""} ${context === "inset" ? "network-edge-bundle--inset" : ""}" ${tooltip ? `data-tooltip="${escapeAttr(tooltip)}"` : ""} ${renderLinkKeysAttr(edge.linkEntries)} ${renderFocusKeysAttr(edge.focusEntries)}>
+            <path
+                class="network-edge network-edge--ribbon ${edge.primary ? "is-primary" : ""}"
+                d="${path}"
+                style="stroke:${ribbonColor};stroke-width:${ribbonWidth}px"
+                aria-hidden="true"
+            ></path>
+            <path
+                class="network-edge-glow ${edge.primary ? "is-primary" : ""}"
+                d="${path}"
+                style="stroke:${glowColor};stroke-width:${glowWidth}px"
+                aria-hidden="true"
+            ></path>
+            <path
+                class="network-edge network-edge--core ${edge.primary ? "is-primary" : ""} ${context === "inset" ? "network-edge--inset" : ""}"
+                d="${path}"
+                style="stroke:${edgeColor};stroke-width:${coreWidth}px"
+                aria-hidden="true"
+            ></path>
+            <g class="network-edge-particles" aria-hidden="true">
+                ${particles}
+            </g>
+            <path
+                class="network-edge-hitarea"
+                d="${path}"
+                aria-hidden="true"
+            ></path>
+        </g>
+    `;
+}
+
+function getNodeBeaconSpec(node, context = "main") {
+    if (node.kind === "region" || node.kind === "state-summary") {
+        return null;
+    }
+
+    const inset = context === "inset";
+    const scale = inset ? 0.7 : 1;
+    const profile = {
+        origin: { height: 30, width: 6.4, lean: -0.08 },
+        selected: { height: 44, width: 8.6, lean: 0.04 },
+        sibling: { height: 34, width: 7.2, lean: 0.06 },
+        state: { height: 28, width: 6.1, lean: -0.04 }
+    }[node.kind] || { height: 24, width: 5.5, lean: 0 };
+
+    return {
+        height: profile.height * scale,
+        width: profile.width * scale,
+        lean: profile.lean
+    };
+}
+
+function renderNodeBeacon(node, context = "main") {
+    const spec = getNodeBeaconSpec(node, context);
+
+    if (!spec) {
+        return "";
+    }
+
+    const tipX = node.x + spec.width * spec.lean;
+    const tipY = node.y - spec.height;
+    const baseY = node.y - node.size * 0.35;
+    const leftX = node.x - spec.width * 0.62;
+    const rightX = node.x + spec.width * 0.9;
+    const highlightLeftX = node.x - spec.width * 0.08;
+    const highlightRightX = node.x + spec.width * 0.3;
+    const fillShadow = context === "inset" ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.18)";
+    const fillCore = context === "inset" ? "rgba(255,255,255,0.86)" : "rgba(255,255,255,0.92)";
+    const baseRadius = (node.kind === "selected" ? 3.35 : node.kind === "origin" ? 2.45 : 2.05) * (context === "inset" ? 0.82 : 1);
+
+    return `
+        <g class="network-node-beacon" aria-hidden="true">
+            <path class="network-node-beacon__shadow" d="M ${leftX.toFixed(2)} ${baseY.toFixed(2)} L ${tipX.toFixed(2)} ${tipY.toFixed(2)} L ${rightX.toFixed(2)} ${baseY.toFixed(2)} Z" fill="${fillShadow}"></path>
+            <path class="network-node-beacon__core" d="M ${node.x.toFixed(2)} ${(baseY - 1).toFixed(2)} L ${highlightLeftX.toFixed(2)} ${(tipY + spec.height * 0.06).toFixed(2)} L ${highlightRightX.toFixed(2)} ${baseY.toFixed(2)} Z" fill="${fillCore}"></path>
+            <circle class="network-node-base-ring" cx="${node.x}" cy="${node.y}" r="${baseRadius.toFixed(2)}"></circle>
+        </g>
     `;
 }
 
@@ -2150,40 +2593,78 @@ function renderLocalNetworkNode(node) {
         node.state ? "is-focusable-state" : ""
     ].filter(Boolean).join(" ");
 
+    const nodeClass = [
+        "network-node",
+        "network-node--core",
+        node.selected ? "is-selected" : "",
+        node.kind === "state-summary" ? "is-summary" : "",
+        node.state && state.focusedState === node.state ? "is-focused" : "",
+        `network-node--${node.kind}`
+    ].filter(Boolean).join(" ");
+    const nodeStyle = `--node-color:${node.color};--node-glow:${colorWithAlpha(node.color, node.selected ? 0.38 : 0.22)};--node-ring:${colorWithAlpha(node.color, node.selected ? 0.92 : 0.66)};${getOrganicMotionStyle(node)}`;
+    const visibleCoreRadius = node.kind === "selected" ? 2.25 : node.kind === "origin" ? 1.85 : 1.45;
+    const shellRadius = visibleCoreRadius + (node.kind === "selected" ? 1.45 : 0.95);
+    const glowRadius = shellRadius * 1.75;
+
     return `
-        <g
-            class="${className}"
-            ${node.placeId ? `data-place-id="${node.placeId}" tabindex="0" role="button" focusable="true"` : ""}
-            ${node.state ? `data-state-focus="${escapeAttr(node.state)}" tabindex="0" role="button" focusable="true"` : ""}
-            ${node.tooltip ? `data-tooltip="${escapeAttr(node.tooltip)}"` : ""}
-            ${renderLinkKeysAttr(node.linkEntries)}
-            ${renderFocusKeysAttr(node.focusEntries)}
-            style="${getOrganicMotionStyle(node)}"
-        >
-            <circle class="network-node ${node.selected ? "is-selected" : ""} ${node.kind === "state-summary" ? "is-summary" : ""} ${node.state && state.focusedState === node.state ? "is-focused" : ""}" cx="${node.x}" cy="${node.y}" r="${node.size}" fill="${node.color}"></circle>
-            <text class="network-label" x="${labelLayout.labelX}" y="${labelLayout.labelY}" text-anchor="${labelLayout.anchor}" data-scale-label="true" data-base-font-size="14" data-base-stroke-width="6">${node.label}</text>
-            ${node.detail ? `<text class="network-detail" x="${labelLayout.labelX}" y="${labelLayout.detailY}" text-anchor="${labelLayout.anchor}" data-scale-label="true" data-base-font-size="12" data-base-stroke-width="5">${node.detail}</text>` : ""}
+        <g data-static-anchor-x="${node.x.toFixed(2)}" data-static-anchor-y="${node.y.toFixed(2)}">
+            <g
+                class="${className} node-kind--${node.kind}"
+                ${node.placeId ? `data-place-id="${node.placeId}" tabindex="0" role="button" focusable="true"` : ""}
+                ${node.state ? `data-state-focus="${escapeAttr(node.state)}" tabindex="0" role="button" focusable="true"` : ""}
+                ${node.tooltip ? `data-tooltip="${escapeAttr(node.tooltip)}"` : ""}
+                ${renderLinkKeysAttr(node.linkEntries)}
+                ${renderFocusKeysAttr(node.focusEntries)}
+                style="${nodeStyle}"
+            >
+                ${renderNodeBeacon(node, "main")}
+                <circle class="network-node-hitarea" cx="${node.x}" cy="${node.y}" r="${Math.max(node.size, 12).toFixed(1)}"></circle>
+                <circle class="network-node-glow network-node-glow--${node.kind}" cx="${node.x}" cy="${node.y}" r="${glowRadius.toFixed(1)}"></circle>
+                <circle class="network-node-shell network-node-shell--${node.kind}" cx="${node.x}" cy="${node.y}" r="${shellRadius.toFixed(1)}"></circle>
+                <circle class="${nodeClass}" cx="${node.x}" cy="${node.y}" r="${visibleCoreRadius.toFixed(1)}" fill="${node.color}"></circle>
+                <text class="network-label" x="${labelLayout.labelX}" y="${labelLayout.labelY}" text-anchor="${labelLayout.anchor}">${node.label}</text>
+                ${node.detail ? `<text class="network-detail" x="${labelLayout.labelX}" y="${labelLayout.detailY}" text-anchor="${labelLayout.anchor}">${node.detail}</text>` : ""}
+            </g>
         </g>
     `;
 }
 
 function renderInsetNetworkNode(node) {
     const labelLayout = getNetworkLabelLayout(node, "inset");
+    const nodeClass = [
+        "network-node",
+        "network-node--core",
+        "network-node--inset",
+        node.kind === "selected" ? "is-selected" : "",
+        node.kind === "state-summary" ? "is-summary" : "",
+        node.state && state.focusedState === node.state ? "is-focused" : "",
+        `network-node--${node.kind}`
+    ].filter(Boolean).join(" ");
+    const nodeStyle = `--node-color:${node.color};--node-glow:${colorWithAlpha(node.color, node.kind === "selected" ? 0.34 : 0.2)};--node-ring:${colorWithAlpha(node.color, node.kind === "selected" ? 0.88 : 0.62)};${getOrganicMotionStyle(node)}`;
+    const visibleCoreRadius = node.kind === "selected" ? 1.92 : node.kind === "origin" ? 1.6 : 1.28;
+    const shellRadius = visibleCoreRadius + (node.kind === "selected" ? 1.18 : 0.82);
+    const glowRadius = shellRadius * 1.68;
 
     return `
-        <g
-            class="local-inset-node ${node.kind === "selected" ? "is-selected" : ""} ${node.kind === "state-summary" ? "is-summary" : ""} ${node.placeId ? "is-clickable" : ""}"
-            ${node.placeId ? `data-place-id="${node.placeId}"` : ""}
-            ${node.state ? `data-state-focus="${escapeAttr(node.state)}"` : ""}
-            ${(node.placeId || node.state) ? `tabindex="0" role="button" focusable="true"` : ""}
-            ${renderLinkKeysAttr(node.linkEntries)}
-            ${renderFocusKeysAttr(node.focusEntries)}
-            data-tooltip="${escapeAttr(node.tooltip)}"
-            style="${getOrganicMotionStyle(node)}"
-        >
-            <circle class="network-node network-node--inset ${node.kind === "selected" ? "is-selected" : ""} ${node.kind === "state-summary" ? "is-summary" : ""} ${node.state && state.focusedState === node.state ? "is-focused" : ""}" cx="${node.x}" cy="${node.y}" r="${node.size}" fill="${node.color}"></circle>
-            <text class="network-label network-label--inset" x="${labelLayout.labelX}" y="${labelLayout.labelY}" text-anchor="${labelLayout.anchor}" data-scale-label="true" data-base-font-size="13" data-base-stroke-width="6">${node.label}</text>
-            ${node.detail ? `<text class="chart-note local-inset-note" x="${labelLayout.labelX}" y="${labelLayout.detailY}" text-anchor="${labelLayout.anchor}" data-scale-label="true" data-base-font-size="11" data-base-stroke-width="4.5">${node.detail}</text>` : ""}
+        <g data-static-anchor-x="${node.x.toFixed(2)}" data-static-anchor-y="${node.y.toFixed(2)}">
+            <g
+                class="local-inset-node ${node.kind === "selected" ? "is-selected" : ""} ${node.kind === "state-summary" ? "is-summary" : ""} ${node.placeId ? "is-clickable" : ""} node-kind--${node.kind}"
+                ${node.placeId ? `data-place-id="${node.placeId}"` : ""}
+                ${node.state ? `data-state-focus="${escapeAttr(node.state)}"` : ""}
+                ${(node.placeId || node.state) ? `tabindex="0" role="button" focusable="true"` : ""}
+                ${renderLinkKeysAttr(node.linkEntries)}
+                ${renderFocusKeysAttr(node.focusEntries)}
+                ${node.tooltip ? `data-tooltip="${escapeAttr(node.tooltip)}"` : ""}
+                style="${nodeStyle}"
+            >
+                ${renderNodeBeacon(node, "inset")}
+                <circle class="network-node-hitarea" cx="${node.x}" cy="${node.y}" r="${Math.max(node.size, 9.5).toFixed(1)}"></circle>
+                <circle class="network-node-glow network-node-glow--${node.kind}" cx="${node.x}" cy="${node.y}" r="${glowRadius.toFixed(1)}"></circle>
+                <circle class="network-node-shell network-node-shell--${node.kind}" cx="${node.x}" cy="${node.y}" r="${shellRadius.toFixed(1)}"></circle>
+                <circle class="${nodeClass}" cx="${node.x}" cy="${node.y}" r="${visibleCoreRadius.toFixed(1)}" fill="${node.color}"></circle>
+                <text class="network-label network-label--inset" x="${labelLayout.labelX}" y="${labelLayout.labelY}" text-anchor="${labelLayout.anchor}">${node.label}</text>
+                ${node.detail ? `<text class="chart-note local-inset-note" x="${labelLayout.labelX}" y="${labelLayout.detailY}" text-anchor="${labelLayout.anchor}">${node.detail}</text>` : ""}
+            </g>
         </g>
     `;
 }
@@ -2195,16 +2676,13 @@ function renderLocalInset(origin, place, contextLabel) {
     const nodeLookup = new Map(network.nodes.map((node) => [node.id, node]));
     const panZoomType = `local-inset-${contextLabel}`;
     const clipId = `local-inset-clip-${contextLabel}`;
-    const hint = network.visibleCount
-        ? `Drag the title bar to move the card. Scroll to zoom the network, drag inside the inset to pan, and click a sibling name to switch the main-view place.`
-        : `No visible records remain under the current filters. Scroll still zooms the network canvas; clear filters to restore linked state and region nodes.`;
 
     return `
         <aside class="local-inset-card local-inset-card--${contextLabel} ${collapsed ? "is-collapsed" : ""}" data-local-inset-view="${contextLabel}">
             <div class="local-inset-card__toolbar" data-local-inset-drag="${contextLabel}">
                 <div class="local-inset-card__toolbar-copy">
                     <p class="annotation-card__eyebrow">Local Inset</p>
-                    <h3>${place.name} relationship view</h3>
+                    <h3>${place.name} distance field</h3>
                     <span class="local-inset-card__collapsed-label">Local</span>
                 </div>
 
@@ -2223,10 +2701,6 @@ function renderLocalInset(origin, place, contextLabel) {
             </div>
 
             <div class="local-inset-card__content">
-                <div class="local-inset-card__header">
-                    <p class="local-inset-card__hint">${hint}</p>
-                </div>
-
                 <svg class="local-inset-svg interactive-map" data-map-svg="${panZoomType}" viewBox="0 0 480 290" role="img" aria-label="Linked local inset">
                     <defs>
                         <clipPath id="${clipId}">
@@ -2242,7 +2716,7 @@ function renderLocalInset(origin, place, contextLabel) {
                     </g>
                     ${
                         !network.visibleCount
-                            ? `<text class="chart-note" x="240" y="270" text-anchor="middle">No visible state or region links under the current filters.</text>`
+                            ? `<text class="chart-note" x="240" y="270" text-anchor="middle">No visible state links under the current filters.</text>`
                             : ""
                     }
                 </svg>
@@ -2325,24 +2799,28 @@ function renderLocalView(origin, place) {
                                     ${network.nodes.map((node) => renderLocalNetworkNode(node)).join("")}
                                 </g>
                             </g>
-                            <text class="chart-note" x="48" y="540">Top: origin anchor. Left: sibling names. Right: top visible states; lower-frequency ones collapse into a summary node. Bottom: filtered regional communities.</text>
+                            <text class="chart-note" x="48" y="540">Top: origin anchor. Left: sibling names. State nodes spread outward by average corridor distance, and each label shows mean kilometers plus visible count.</text>
                             ${
                                 !network.visibleCount
-                                    ? `<text class="chart-note" x="500" y="500" text-anchor="middle">Current filters remove all state and region links for this name.</text>`
+                                    ? `<text class="chart-note" x="500" y="500" text-anchor="middle">Current filters remove all visible state links for this name.</text>`
                                     : ""
                             }
                         </svg>
                     </div>
 
                     <div class="community-legend">
-                        ${FEATURE_OPTIONS
-                            .map((feature) => `
-                                <span class="community-chip" style="--chip-color:${REGION_COLORS[feature.key]}">
-                                    <span class="community-chip__dot"></span>
-                                    <span>${feature.label}</span>
-                                </span>
-                            `)
-                            .join("")}
+                        <span class="community-chip" style="--chip-color:#63ebff">
+                            <span class="community-chip__dot"></span>
+                            <span>nearer corridor states</span>
+                        </span>
+                        <span class="community-chip" style="--chip-color:#ff4fb8">
+                            <span class="community-chip__dot"></span>
+                            <span>farther corridor states</span>
+                        </span>
+                        <span class="community-chip community-chip--wide" style="--chip-color:rgba(244,250,255,0.92)">
+                            <span class="community-chip__dot"></span>
+                            <span>label = avg km · visible count</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -2473,7 +2951,7 @@ function syncLinkedHighlights(keys = [], mode = "link") {
     document.querySelectorAll("[data-link-keys], [data-focus-keys]").forEach((element) => {
         const sourceValue =
             mode === "focus"
-                ? element.dataset.focusKeys
+                ? (element.dataset.focusKeys || element.dataset.linkKeys)
                 : element.dataset.linkKeys;
         const elementKeys = parseLinkKeys(sourceValue);
         const isLinked =
@@ -2783,8 +3261,18 @@ function handleClick(event) {
     const stateFocusTarget = event.target.closest("[data-state-focus]");
     if (stateFocusTarget && elements.vizStage.contains(stateFocusTarget)) {
         const nextState = stateFocusTarget.dataset.stateFocus;
+        const payload = getHighlightPayload(stateFocusTarget);
         state.focusedState = state.focusedState === nextState ? null : nextState;
         renderApp();
+        state.pinnedInteraction = {
+            signature: payload.signature,
+            mode: payload.mode,
+            keys: payload.keys,
+            tooltip: "",
+            clientX: event.clientX,
+            clientY: event.clientY
+        };
+        syncPinnedInteractionDisplay();
         return;
     }
 
@@ -2814,7 +3302,7 @@ function handleClick(event) {
     }
 
     const interactiveTarget = elements.vizStage.contains(event.target)
-        ? event.target.closest("[data-tooltip], [data-link-keys]")
+        ? event.target.closest("[data-tooltip], [data-link-keys], [data-focus-keys]")
         : null;
     if (interactiveTarget) {
         togglePinnedInteraction(interactiveTarget, event);

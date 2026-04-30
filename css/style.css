@@ -1,18 +1,20 @@
 :root {
-    --paper: #f7f1e3;
-    --paper-strong: rgba(255, 251, 245, 0.82);
-    --paper-soft: rgba(255, 248, 237, 0.58);
-    --ink: #1d2430;
-    --muted: #5e6674;
-    --border: rgba(29, 36, 48, 0.14);
-    --shadow: 0 22px 60px rgba(28, 34, 46, 0.12);
-    --accent: #0f9eab;
-    --accent-soft: rgba(15, 158, 171, 0.16);
-    --accent-strong: rgba(15, 158, 171, 0.3);
-    --early: #5ec7e6;
-    --expansion: #7fbe47;
-    --modern: #9944d6;
-    --uncertain: #d8894a;
+    --paper: #03060d;
+    --paper-strong: rgba(8, 13, 24, 0.84);
+    --paper-soft: rgba(7, 11, 21, 0.68);
+    --ink: #eef7ff;
+    --muted: #8ca4c8;
+    --border: rgba(106, 161, 235, 0.18);
+    --shadow: 0 30px 90px rgba(0, 0, 0, 0.46);
+    --accent: #55e7ff;
+    --accent-soft: rgba(85, 231, 255, 0.14);
+    --accent-strong: rgba(85, 231, 255, 0.34);
+    --accent-hot: rgba(255, 79, 159, 0.54);
+    --panel-glow: 0 0 0 1px rgba(122, 198, 255, 0.1), 0 0 38px rgba(43, 200, 255, 0.08), 0 24px 80px rgba(0, 0, 0, 0.5);
+    --early: #63ebff;
+    --expansion: #86a8ff;
+    --modern: #ff4fb8;
+    --uncertain: #ffc670;
     --radius-lg: 28px;
     --radius-md: 20px;
 }
@@ -31,15 +33,18 @@ body {
     margin: 0;
     min-height: 100vh;
     color: var(--ink);
-    font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+    font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
     background-color: var(--paper);
     background-image:
-        radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 34%),
-        radial-gradient(circle at bottom right, rgba(15, 158, 171, 0.08), transparent 26%),
-        linear-gradient(rgba(26, 33, 44, 0.09) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(26, 33, 44, 0.09) 1px, transparent 1px);
-    background-size: auto, auto, 96px 96px, 96px 96px;
-    background-position: 0 0, 100% 100%, 0 0, 0 0;
+        radial-gradient(circle at 18% 14%, rgba(43, 200, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 84% 18%, rgba(255, 79, 159, 0.12), transparent 20%),
+        radial-gradient(circle at 52% 78%, rgba(118, 142, 255, 0.12), transparent 30%),
+        linear-gradient(rgba(72, 100, 150, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(72, 100, 150, 0.12) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(3, 6, 13, 0.98), rgba(1, 3, 8, 0.99));
+    background-size: auto, auto, auto, 96px 96px, 96px 96px, auto;
+    background-position: 0 0, 100% 0, 50% 100%, 0 0, 0 0, 0 0;
+    color-scheme: dark;
 }
 
 button,
@@ -76,18 +81,22 @@ button {
     margin: 0 0 6px;
     font-size: 0.78rem;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
 }
 
 .hero__title {
     margin: 0;
     max-width: 18ch;
-    line-height: 0.95;
-    font-family: "Marker Felt", "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+    line-height: 0.92;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
     font-size: clamp(2.25rem, 4.4vw, 4rem);
     text-wrap: balance;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    text-shadow: 0 0 24px rgba(85, 231, 255, 0.16);
 }
 
 .hero__subtitle {
@@ -105,8 +114,8 @@ button {
     align-self: start;
     border: 1px solid var(--border);
     border-radius: 999px;
-    background: rgba(255, 252, 247, 0.74);
-    box-shadow: var(--shadow);
+    background: rgba(8, 14, 26, 0.72);
+    box-shadow: var(--panel-glow);
     backdrop-filter: blur(12px);
 }
 
@@ -128,7 +137,7 @@ button {
 .view-pill.is-active {
     color: var(--ink);
     background: var(--accent-soft);
-    box-shadow: inset 0 0 0 1px var(--accent-strong);
+    box-shadow: inset 0 0 0 1px var(--accent-strong), 0 0 18px rgba(85, 231, 255, 0.16);
 }
 
 .workspace {
@@ -162,12 +171,65 @@ button {
 .stats-card,
 .legend-card,
 .viz-card,
+.detail-card,
+.floating-panel__section,
+.local-inset-card,
+.annotation-card,
+.mini-card,
+.ghost-button,
+.map-controls,
+.view-switch {
+    position: relative;
+    overflow: hidden;
+}
+
+.panel-card,
+.stats-card,
+.legend-card,
+.viz-card,
 .detail-card {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background: var(--paper-strong);
-    box-shadow: var(--shadow);
+    box-shadow: var(--panel-glow);
     backdrop-filter: blur(14px);
+}
+
+.panel-card::before,
+.stats-card::before,
+.legend-card::before,
+.viz-card::before,
+.detail-card::before,
+.floating-panel__section::before,
+.local-inset-card::before,
+.annotation-card::before,
+.mini-card::before {
+    content: "";
+    position: absolute;
+    inset: 10px;
+    border: 1px solid rgba(143, 196, 255, 0.08);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.panel-card::after,
+.stats-card::after,
+.legend-card::after,
+.viz-card::after,
+.detail-card::after,
+.floating-panel__section::after,
+.local-inset-card::after,
+.annotation-card::after,
+.mini-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 18px;
+    width: 96px;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(85, 231, 255, 0.92), rgba(255, 255, 255, 0));
+    box-shadow: 0 0 16px rgba(85, 231, 255, 0.24);
+    pointer-events: none;
 }
 
 .panel-card,
@@ -187,8 +249,9 @@ button {
     gap: 12px;
     padding: 14px 16px;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid rgba(29, 36, 48, 0.1);
+    background: rgba(9, 16, 28, 0.9);
+    border: 1px solid rgba(106, 161, 235, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .search-box__icon {
@@ -216,12 +279,15 @@ button {
 }
 
 .search-box input::placeholder {
-    color: #8e95a1;
+    color: #6f86aa;
 }
 
 .section-heading__title {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.04rem;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 .viz-card--hero .section-heading__title {
@@ -256,13 +322,13 @@ button {
     display: grid;
     gap: 4px;
     align-items: center;
-    border: 1px solid rgba(29, 36, 48, 0.09);
+    border: 1px solid rgba(106, 161, 235, 0.14);
     border-radius: 18px;
     padding: 14px;
     text-align: left;
     color: inherit;
-    background: rgba(255, 255, 255, 0.62);
-    transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+    background: linear-gradient(180deg, rgba(12, 20, 36, 0.9), rgba(8, 13, 24, 0.88));
+    transition: border-color 180ms ease, transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
 }
 
 .origin-button {
@@ -279,6 +345,7 @@ button {
 .place-button:focus-visible {
     transform: translateY(-1px);
     border-color: var(--accent-strong);
+    box-shadow: 0 0 24px rgba(85, 231, 255, 0.1);
 }
 
 .origin-button.is-active,
@@ -292,7 +359,7 @@ button {
     height: 12px;
     border-radius: 999px;
     background: var(--accent);
-    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.68);
+    box-shadow: 0 0 0 4px rgba(5, 10, 18, 0.8), 0 0 14px rgba(85, 231, 255, 0.34);
 }
 
 .origin-button__arrow {
@@ -304,17 +371,22 @@ button {
 .place-button strong {
     display: block;
     font-size: 1rem;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
+    letter-spacing: 0.06em;
 }
 
 .origin-button small,
 .place-button small {
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
 }
 
 .place-pill {
     padding: 8px 10px;
     border-radius: 999px;
-    background: rgba(29, 36, 48, 0.07);
+    background: rgba(88, 128, 196, 0.16);
     color: var(--muted);
     font-size: 0.85rem;
 }
@@ -334,8 +406,8 @@ button {
     gap: 10px;
     padding: 12px 14px;
     border-radius: 18px;
-    border: 1px solid rgba(29, 36, 48, 0.08);
-    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(106, 161, 235, 0.14);
+    background: rgba(10, 17, 29, 0.86);
     color: var(--ink);
 }
 
@@ -366,22 +438,27 @@ button {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
 }
 
 .select-box select {
-    border: 1px solid rgba(29, 36, 48, 0.1);
+    border: 1px solid rgba(106, 161, 235, 0.18);
     border-radius: 16px;
     padding: 12px 14px;
     color: var(--ink);
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(9, 15, 27, 0.94);
     outline: none;
 }
 
 .chart-frame {
     min-height: 240px;
-    border-radius: 24px;
-    padding: 12px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(255, 255, 255, 0.35));
+    border-radius: 28px;
+    padding: 14px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(85, 231, 255, 0.09), transparent 36%),
+        linear-gradient(180deg, rgba(7, 12, 23, 0.96), rgba(3, 7, 15, 0.98));
+    border: 1px solid rgba(106, 161, 235, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(126, 184, 255, 0.06), 0 0 32px rgba(85, 231, 255, 0.05);
 }
 
 .legend-list {
@@ -396,9 +473,9 @@ button {
     gap: 12px;
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid rgba(29, 36, 48, 0.08);
+    border: 1px solid rgba(106, 161, 235, 0.14);
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.62);
+    background: rgba(9, 15, 27, 0.86);
     color: var(--ink);
     text-align: left;
     transition: border-color 180ms ease, transform 180ms ease, opacity 180ms ease;
@@ -418,22 +495,26 @@ button {
     height: 12px;
     border-radius: 999px;
     background: var(--chip-color, var(--accent));
-    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.68);
+    box-shadow: 0 0 0 4px rgba(5, 10, 18, 0.8), 0 0 14px rgba(122, 198, 255, 0.28);
 }
 
 .legend-chip__copy strong {
     display: block;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
+    letter-spacing: 0.08em;
 }
 
 .legend-chip__copy small {
     display: block;
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    font-size: 0.74rem;
 }
 
 .ghost-button {
-    border: 1px solid rgba(29, 36, 48, 0.12);
+    border: 1px solid rgba(106, 161, 235, 0.18);
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(9, 15, 27, 0.82);
     color: var(--ink);
     padding: 12px 16px;
 }
@@ -479,10 +560,10 @@ button {
     justify-content: center;
     gap: 10px;
     padding: 14px 10px;
-    border: 1px solid rgba(29, 36, 48, 0.1);
+    border: 1px solid rgba(106, 161, 235, 0.18);
     border-radius: 20px;
-    background: rgba(255, 251, 245, 0.88);
-    box-shadow: 0 18px 38px rgba(20, 28, 37, 0.16);
+    background: linear-gradient(180deg, rgba(10, 17, 30, 0.92), rgba(6, 11, 20, 0.92));
+    box-shadow: var(--panel-glow);
     backdrop-filter: blur(16px);
     color: var(--ink);
     writing-mode: vertical-rl;
@@ -494,7 +575,7 @@ button {
 .floating-panel__toggle:focus-visible {
     transform: translateY(-1px);
     border-color: var(--accent-strong);
-    background: rgba(255, 255, 255, 0.96);
+    background: linear-gradient(180deg, rgba(12, 20, 35, 0.97), rgba(8, 13, 23, 0.96));
 }
 
 .floating-panel__toggle-label {
@@ -546,10 +627,12 @@ button {
 
 .floating-panel__section {
     padding: 14px;
-    border: 1px solid rgba(29, 36, 48, 0.1);
+    border: 1px solid rgba(106, 161, 235, 0.16);
     border-radius: 22px;
-    background: rgba(255, 251, 245, 0.82);
-    box-shadow: 0 18px 38px rgba(20, 28, 37, 0.14);
+    background:
+        radial-gradient(circle at top, rgba(85, 231, 255, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(10, 16, 29, 0.9), rgba(7, 12, 22, 0.92));
+    box-shadow: var(--panel-glow);
     backdrop-filter: blur(16px);
 }
 
@@ -573,7 +656,7 @@ button {
 .floating-panel .place-button,
 .floating-panel .filter-chip,
 .floating-panel .legend-chip {
-    background: rgba(255, 255, 255, 0.78);
+    background: rgba(11, 18, 31, 0.9);
 }
 
 .viz-stage {
@@ -605,13 +688,29 @@ button {
 .viz-frame {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(29, 36, 48, 0.08);
+    border: 1px solid rgba(106, 161, 235, 0.16);
     border-radius: 26px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.42));
+    background:
+        radial-gradient(circle at 50% 0%, rgba(85, 231, 255, 0.08), transparent 34%),
+        radial-gradient(circle at 100% 100%, rgba(255, 79, 159, 0.05), transparent 26%),
+        linear-gradient(180deg, rgba(6, 11, 20, 0.96), rgba(2, 5, 11, 0.98));
+    box-shadow: var(--panel-glow);
 }
 
 .map-frame {
     isolation: isolate;
+}
+
+.viz-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(rgba(73, 103, 156, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(73, 103, 156, 0.08) 1px, transparent 1px);
+    background-size: 88px 88px;
+    opacity: 0.46;
+    pointer-events: none;
 }
 
 .map-frame::after {
@@ -619,7 +718,7 @@ button {
     position: absolute;
     inset: 0;
     border-radius: 26px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42), inset 0 -24px 54px rgba(20, 28, 37, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(134, 192, 255, 0.18), inset 0 0 48px rgba(85, 231, 255, 0.08), inset 0 -24px 64px rgba(0, 0, 0, 0.24);
     pointer-events: none;
 }
 
@@ -649,10 +748,10 @@ button {
     align-items: center;
     gap: 8px;
     padding: 8px;
-    border: 1px solid rgba(29, 36, 48, 0.12);
+    border: 1px solid rgba(106, 161, 235, 0.18);
     border-radius: 18px;
-    background: rgba(255, 252, 247, 0.88);
-    box-shadow: 0 14px 32px rgba(25, 31, 42, 0.14);
+    background: rgba(8, 13, 24, 0.9);
+    box-shadow: var(--panel-glow);
     backdrop-filter: blur(14px);
     pointer-events: auto;
 }
@@ -660,10 +759,10 @@ button {
 .map-control-button {
     min-width: 42px;
     height: 42px;
-    border: 1px solid rgba(29, 36, 48, 0.1);
+    border: 1px solid rgba(106, 161, 235, 0.16);
     border-radius: 13px;
     color: var(--ink);
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(14, 22, 37, 0.92);
     transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
 
@@ -671,7 +770,7 @@ button {
 .map-control-button:focus-visible {
     transform: translateY(-1px);
     border-color: var(--accent-strong);
-    background: rgba(255, 255, 255, 0.98);
+    background: rgba(18, 27, 44, 0.98);
 }
 
 .map-control-button--wide {
@@ -686,6 +785,7 @@ button {
     font-size: 0.88rem;
     font-weight: 700;
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
 }
 
 .map-hint {
@@ -695,9 +795,9 @@ button {
     font-size: 0.76rem;
     letter-spacing: 0.02em;
     color: var(--muted);
-    background: rgba(255, 252, 247, 0.84);
-    border: 1px solid rgba(29, 36, 48, 0.1);
-    box-shadow: 0 10px 24px rgba(25, 31, 42, 0.08);
+    background: rgba(8, 14, 24, 0.84);
+    border: 1px solid rgba(106, 161, 235, 0.14);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(12px);
 }
 
@@ -706,12 +806,14 @@ button {
     top: 0;
     left: 0;
     z-index: 4;
-    width: 388px;
+    width: 372px;
     padding: 12px;
-    border: 1px solid rgba(29, 36, 48, 0.12);
-    border-radius: 22px;
-    background: rgba(255, 251, 245, 0.84);
-    box-shadow: 0 18px 38px rgba(20, 28, 37, 0.16);
+    border: 1px solid rgba(116, 182, 255, 0.22);
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at top, rgba(85, 231, 255, 0.11), transparent 34%),
+        linear-gradient(180deg, rgba(9, 15, 30, 0.95), rgba(4, 8, 17, 0.96));
+    box-shadow: 0 0 0 1px rgba(112, 183, 255, 0.08), 0 0 42px rgba(38, 203, 255, 0.1), 0 24px 68px rgba(0, 0, 0, 0.52);
     backdrop-filter: blur(16px);
     transform-origin: top left;
     touch-action: none;
@@ -720,7 +822,7 @@ button {
 
 .local-inset-card.is-dragging {
     cursor: grabbing;
-    box-shadow: 0 22px 42px rgba(20, 28, 37, 0.2);
+    box-shadow: 0 0 0 1px rgba(122, 198, 255, 0.14), 0 0 44px rgba(85, 231, 255, 0.12), 0 26px 52px rgba(0, 0, 0, 0.52);
 }
 
 .local-inset-card__toolbar {
@@ -728,7 +830,7 @@ button {
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     cursor: grab;
 }
 
@@ -738,7 +840,10 @@ button {
 
 .local-inset-card__toolbar-copy h3 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.96rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
 }
 
 .local-inset-card__collapsed-label {
@@ -756,19 +861,22 @@ button {
 .local-inset-card__readout {
     min-width: 52px;
     text-align: center;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 800;
-    color: var(--muted);
+    color: #d5ebff;
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    letter-spacing: 0.08em;
 }
 
 .local-inset-card__action {
     min-width: 32px;
     height: 32px;
     padding: 0 10px;
-    border: 1px solid rgba(29, 36, 48, 0.12);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.84);
+    border: 1px solid rgba(106, 161, 235, 0.16);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(17, 27, 43, 0.96), rgba(10, 16, 28, 0.98));
     color: var(--ink);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 18px rgba(85, 231, 255, 0.06);
 }
 
 .local-inset-card__action--wide {
@@ -778,19 +886,6 @@ button {
 .local-inset-card__action--toggle {
     min-width: 36px;
     font-size: 1.1rem;
-}
-
-.local-inset-card__header {
-    display: grid;
-    gap: 6px;
-    margin-bottom: 10px;
-}
-
-.local-inset-card__hint {
-    margin: 0;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.4;
 }
 
 .local-inset-svg {
@@ -846,31 +941,37 @@ button {
 
 .map-surface,
 .plot-surface {
-    fill: rgba(255, 255, 255, 0.54);
-    stroke: rgba(29, 36, 48, 0.08);
+    fill: rgba(5, 9, 17, 0.94);
+    stroke: rgba(98, 150, 226, 0.14);
     stroke-width: 2;
 }
 
+.plot-frame-inner {
+    fill: none;
+    stroke: rgba(98, 150, 226, 0.18);
+    stroke-width: 1.5;
+}
+
 .grid-line {
-    stroke: rgba(29, 36, 48, 0.08);
+    stroke: rgba(94, 136, 208, 0.12);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
 }
 
 .continent-shape {
-    fill: rgba(31, 40, 58, 0.14);
-    stroke: rgba(31, 40, 58, 0.1);
+    fill: rgba(9, 18, 36, 0.72);
+    stroke: rgba(72, 118, 196, 0.18);
     stroke-width: 2;
 }
 
 .world-country {
-    fill: rgba(62, 73, 92, 0.16);
-    stroke: rgba(31, 40, 58, 0.12);
+    fill: rgba(11, 21, 40, 0.84);
+    stroke: rgba(85, 136, 219, 0.24);
     stroke-width: 1.2;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
-    transition: fill 160ms ease, stroke 160ms ease;
+    transition: fill 160ms ease, stroke 160ms ease, filter 160ms ease;
     shape-rendering: geometricPrecision;
 }
 
@@ -880,19 +981,22 @@ button {
 }
 
 .world-country:hover {
-    fill: rgba(15, 158, 171, 0.18);
-    stroke: rgba(15, 158, 171, 0.4);
+    fill: rgba(85, 231, 255, 0.16);
+    stroke: rgba(85, 231, 255, 0.48);
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.14));
 }
 
 .world-country.is-origin {
-    fill: rgba(15, 158, 171, 0.28);
-    stroke: rgba(15, 158, 171, 0.7);
+    fill: rgba(85, 231, 255, 0.18);
+    stroke: rgba(85, 231, 255, 0.72);
     stroke-width: 1.8;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.18));
 }
 
 .world-country.is-linked {
-    fill: rgba(15, 158, 171, 0.24);
-    stroke: rgba(15, 158, 171, 0.62);
+    fill: rgba(85, 231, 255, 0.18);
+    stroke: rgba(85, 231, 255, 0.62);
+    filter: drop-shadow(0 0 12px rgba(85, 231, 255, 0.16));
 }
 
 .interactive-map[data-detail-level="coarse"] .world-country {
@@ -908,14 +1012,14 @@ button {
 }
 
 .usa-outline {
-    fill: rgba(255, 255, 255, 0.74);
-    stroke: rgba(29, 36, 48, 0.2);
+    fill: rgba(5, 10, 18, 0.76);
+    stroke: rgba(120, 178, 255, 0.34);
     stroke-width: 3;
 }
 
 .us-outline-real {
-    fill: rgba(245, 247, 249, 0.76);
-    stroke: rgba(29, 36, 48, 0.22);
+    fill: rgba(7, 12, 23, 0.9);
+    stroke: rgba(120, 178, 255, 0.34);
     stroke-width: 3.4;
     stroke-linejoin: round;
     stroke-linecap: round;
@@ -924,35 +1028,38 @@ button {
 }
 
 .us-state-real {
-    fill: rgba(255, 255, 255, 0.56);
-    stroke: rgba(29, 36, 48, 0.22);
+    fill: rgba(8, 15, 28, 0.76);
+    stroke: rgba(111, 164, 241, 0.26);
     stroke-width: 1.2;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
-    transition: fill 160ms ease, stroke 160ms ease;
+    transition: fill 160ms ease, stroke 160ms ease, filter 160ms ease;
     shape-rendering: geometricPrecision;
 }
 
 .us-state-real:hover {
-    fill: rgba(15, 158, 171, 0.1);
-    stroke: rgba(15, 158, 171, 0.34);
+    fill: rgba(85, 231, 255, 0.1);
+    stroke: rgba(85, 231, 255, 0.42);
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.12));
 }
 
 .us-state-real.is-active {
-    fill: rgba(15, 158, 171, 0.14);
-    stroke: rgba(15, 158, 171, 0.32);
+    fill: rgba(85, 231, 255, 0.1);
+    stroke: rgba(85, 231, 255, 0.34);
 }
 
 .us-state-real.is-focused {
-    fill: rgba(15, 158, 171, 0.22);
-    stroke: rgba(15, 158, 171, 0.82);
+    fill: rgba(85, 231, 255, 0.14);
+    stroke: rgba(85, 231, 255, 0.84);
     stroke-width: 2;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.16));
 }
 
 .us-state-real.is-linked {
-    fill: rgba(15, 158, 171, 0.2);
-    stroke: rgba(15, 158, 171, 0.58);
+    fill: rgba(85, 231, 255, 0.12);
+    stroke: rgba(85, 231, 255, 0.6);
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.14));
 }
 
 .interactive-map[data-detail-level="coarse"] .us-outline-real {
@@ -982,7 +1089,7 @@ button {
 .state-line,
 .terrain-line {
     fill: none;
-    stroke: rgba(29, 36, 48, 0.1);
+    stroke: rgba(93, 140, 218, 0.18);
     stroke-width: 2;
     stroke-linejoin: round;
     stroke-linecap: round;
@@ -992,22 +1099,27 @@ button {
 .route {
     fill: none;
     stroke-linecap: round;
-    stroke-width: 4;
-    opacity: 0.82;
+    stroke-width: 3.6;
+    opacity: 0.78;
     vector-effect: non-scaling-stroke;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 8px rgba(85, 231, 255, 0.14));
 }
 
 .route--wide {
-    stroke-width: 6;
+    stroke-width: 4.6;
+    opacity: 0.92;
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.2));
 }
 
 .route--ghost {
-    opacity: 0.18;
+    opacity: 0.1;
 }
 
 .route.is-linked {
     opacity: 1;
-    stroke-width: 6.2;
+    stroke-width: 5;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
 .point-label,
@@ -1019,6 +1131,7 @@ button {
 .legend-inline text,
 .network-label {
     fill: var(--ink);
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
 }
 
 .map-label,
@@ -1026,15 +1139,16 @@ button {
 .chart-label,
 .network-label {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 650;
+    letter-spacing: 0.04em;
 }
 
 .network-label {
     paint-order: stroke;
-    stroke: rgba(252, 248, 240, 0.98);
+    stroke: rgba(1, 3, 8, 0.94);
     stroke-width: 6px;
     stroke-linejoin: round;
-    letter-spacing: -0.01em;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
 .map-label-layer {
@@ -1050,14 +1164,15 @@ button {
 .state-abbr-label,
 .country-label,
 .map-label--important {
-    fill: rgba(28, 35, 46, 0.88);
+    fill: rgba(236, 247, 255, 0.9);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
     paint-order: stroke;
-    stroke: rgba(247, 241, 227, 0.98);
-    stroke-width: 5px;
+    stroke: rgba(1, 3, 8, 0.96);
+    stroke-width: 4.5px;
     stroke-linejoin: round;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
 .state-abbr-label {
@@ -1080,6 +1195,7 @@ button {
 .map-label--important.is-linked {
     fill: var(--accent);
     opacity: 1;
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.2));
 }
 
 .country-label {
@@ -1108,13 +1224,14 @@ button {
 
 .marker {
     fill: var(--accent);
-    stroke: rgba(255, 255, 255, 0.92);
+    stroke: rgba(238, 247, 255, 0.96);
     stroke-width: 4;
     vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
 .marker--origin {
-    fill: #223249;
+    fill: #f6fbff;
 }
 
 .marker--hub {
@@ -1122,15 +1239,17 @@ button {
 }
 
 .marker.is-linked {
-    stroke: rgba(16, 21, 33, 0.96);
+    stroke: rgba(245, 250, 255, 0.98);
     stroke-width: 5;
+    filter: drop-shadow(0 0 18px rgba(85, 231, 255, 0.28));
 }
 
 .dot-point {
-    stroke: rgba(255, 255, 255, 0.88);
+    stroke: rgba(238, 247, 255, 0.88);
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
     transition: transform 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.14));
 }
 
 .dot-point:hover {
@@ -1140,23 +1259,35 @@ button {
 
 .dot-point.is-linked {
     opacity: 1;
-    stroke: #101521;
+    stroke: rgba(245, 250, 255, 0.96);
     stroke-width: 3.5;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
 .timeline-line {
     fill: none;
     stroke: var(--accent);
-    stroke-width: 5;
+    stroke-width: 3.4;
     stroke-linejoin: round;
     stroke-linecap: round;
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.2));
+}
+
+.hist-line {
+    fill: none;
+    stroke: rgba(167, 223, 255, 0.34);
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
 .timeline-point,
 .scatter-point {
     fill: rgba(255, 255, 255, 0.95);
     stroke: var(--accent);
-    stroke-width: 3;
+    stroke-width: 2.4;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.18));
 }
 
 .timeline-point.is-highlight,
@@ -1167,15 +1298,38 @@ button {
 }
 
 .marker-line {
-    stroke: rgba(29, 36, 48, 0.16);
+    stroke: rgba(118, 167, 239, 0.24);
     stroke-dasharray: 5 7;
     stroke-width: 2;
 }
 
-.bar {
+.bar,
+.hist-bar {
     fill: var(--accent-soft);
     stroke: var(--accent);
     stroke-width: 2;
+    filter: drop-shadow(0 0 12px rgba(85, 231, 255, 0.08));
+}
+
+.hist-bar {
+    stroke-width: 2.2;
+}
+
+.hist-bar-glow {
+    filter: blur(14px);
+}
+
+.chart-value-label {
+    fill: #a8c0e4;
+    font-size: 12px;
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    letter-spacing: 0.04em;
+}
+
+.chart-axis-strong {
+    font-size: 16px;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 20px rgba(85, 231, 255, 0.1);
 }
 
 .annotation-stack,
@@ -1195,9 +1349,12 @@ button {
 
 .annotation-card {
     padding: 16px;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.68);
-    border: 1px solid rgba(29, 36, 48, 0.08);
+    border-radius: 18px;
+    background:
+        linear-gradient(180deg, rgba(10, 17, 31, 0.9), rgba(6, 10, 20, 0.94)),
+        radial-gradient(circle at top, rgba(85, 231, 255, 0.06), transparent 55%);
+    border: 1px solid rgba(116, 182, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025), 0 0 24px rgba(85, 231, 255, 0.04);
 }
 
 .annotation-card h3 {
@@ -1215,9 +1372,10 @@ button {
     margin: 0 0 8px;
     font-size: 0.74rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
 }
 
 .annotation-card__metric {
@@ -1225,6 +1383,8 @@ button {
     font-size: 2.25rem;
     line-height: 1;
     font-weight: 700;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 24px rgba(85, 231, 255, 0.16);
 }
 
 .local-shell {
@@ -1261,8 +1421,13 @@ button {
     gap: 8px;
     border-radius: 999px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(29, 36, 48, 0.08);
+    background: linear-gradient(180deg, rgba(12, 20, 34, 0.92), rgba(7, 12, 22, 0.95));
+    border: 1px solid rgba(116, 182, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 0 18px rgba(85, 231, 255, 0.04);
+}
+
+.community-chip--wide {
+    padding-inline: 14px;
 }
 
 .community-chip__dot {
@@ -1275,8 +1440,8 @@ button {
 .mini-card {
     padding: 12px;
     border-radius: 22px;
-    border: 1px solid rgba(29, 36, 48, 0.08);
-    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid rgba(106, 161, 235, 0.14);
+    background: rgba(9, 15, 27, 0.88);
 }
 
 .mini-card h3 {
@@ -1321,7 +1486,7 @@ button {
     justify-content: space-between;
     gap: 16px;
     padding-bottom: 10px;
-    border-bottom: 1px solid rgba(29, 36, 48, 0.08);
+    border-bottom: 1px solid rgba(106, 161, 235, 0.12);
 }
 
 .metric-row:last-child {
@@ -1331,12 +1496,18 @@ button {
 
 .metric-row dt {
     color: var(--muted);
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .metric-row dd {
     margin: 0;
     text-align: right;
     font-weight: 700;
+    font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
+    letter-spacing: 0.06em;
 }
 
 .empty-state {
@@ -1346,64 +1517,284 @@ button {
     text-align: center;
     color: var(--muted);
     border-radius: 24px;
-    border: 1px dashed rgba(29, 36, 48, 0.14);
-    background: rgba(255, 255, 255, 0.42);
+    border: 1px dashed rgba(106, 161, 235, 0.18);
+    background: rgba(8, 14, 24, 0.56);
+}
+
+.network-node-glow,
+.network-node-shell {
+    pointer-events: none;
+    transition: opacity 160ms ease, stroke 160ms ease, filter 160ms ease;
+}
+
+.network-node-hitarea {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+}
+
+.network-node-glow {
+    fill: var(--node-glow, rgba(85, 231, 255, 0.2));
+    opacity: 0.62;
+    filter: blur(9px);
+}
+
+.network-node-shell {
+    fill: none;
+    stroke: var(--node-ring, rgba(85, 231, 255, 0.62));
+    stroke-width: 1.1;
+    opacity: 0.92;
+    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.14));
 }
 
 .network-node {
-    stroke: rgba(255, 255, 255, 0.88);
-    stroke-width: 2.5;
-    transition: stroke 160ms ease, stroke-width 160ms ease, transform 160ms ease, filter 160ms ease;
+    stroke: rgba(236, 247, 255, 0.88);
+    stroke-width: 1.5;
+    transition: stroke 160ms ease, stroke-width 160ms ease, transform 160ms ease, filter 160ms ease, fill 160ms ease;
+    filter: drop-shadow(0 0 8px rgba(85, 231, 255, 0.12));
 }
 
 .network-node.is-summary {
     stroke: rgba(255, 255, 255, 0.94);
-    stroke-dasharray: 6 5;
+    stroke-dasharray: 5 4;
 }
 
 .network-node.is-selected {
-    stroke: #101521;
-    stroke-width: 4;
+    stroke: rgba(245, 250, 255, 0.98);
+    stroke-width: 2.1;
 }
 
 .network-node.is-focused {
     stroke: var(--accent);
-    stroke-width: 4.5;
+    stroke-width: 2.1;
 }
 
 .network-node.is-linked,
 .local-inset-node.is-linked .network-node {
-    stroke: #101521;
-    stroke-width: 4.5;
-    filter: drop-shadow(0 0 12px rgba(15, 158, 171, 0.34));
+    stroke: rgba(245, 250, 255, 0.98);
+    stroke-width: 2.15;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.28));
+}
+
+.local-network-node.is-linked .network-node-shell,
+.local-inset-node.is-linked .network-node-shell,
+.local-network-node.is-linked .network-node-beacon__core,
+.local-inset-node.is-linked .network-node-beacon__core {
+    stroke: rgba(245, 250, 255, 0.92);
+    filter: drop-shadow(0 0 18px rgba(85, 231, 255, 0.28));
+}
+
+.local-network-node.is-linked .network-node-glow,
+.local-inset-node.is-linked .network-node-glow {
+    opacity: 0.88;
+}
+
+.network-edge-bundle {
+    isolation: isolate;
+    cursor: pointer;
+}
+
+.network-edge-glow {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.48;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    animation: networkEdgePulse 8.6s ease-in-out infinite alternate;
+    vector-effect: non-scaling-stroke;
+}
+
+.network-edge-particles,
+.network-edge-particle-cluster,
+.network-node-beacon {
+    pointer-events: none;
+}
+
+.network-edge-particle-cluster {
+    animation: networkEdgeParticleFlicker 4.8s ease-in-out infinite alternate;
+    animation-delay: var(--spark-delay, 0s);
+}
+
+.network-edge-particle {
+    mix-blend-mode: screen;
+}
+
+.network-edge-particle--blur {
+    filter: blur(3px);
 }
 
 .network-edge {
     fill: none;
-    stroke: rgba(29, 36, 48, 0.12);
-    stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.52;
-    transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
+    opacity: 0.16;
+    transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease, filter 160ms ease;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 8px rgba(85, 231, 255, 0.08));
+    vector-effect: non-scaling-stroke;
 }
 
 .network-edge.is-primary {
-    stroke: rgba(29, 36, 48, 0.22);
-    stroke-width: 2.8;
-    stroke-dasharray: 7 10;
-    opacity: 0.66;
-    animation: networkEdgeFlow 15s linear infinite;
+    animation: networkEdgeFlow 12s linear infinite;
+}
+
+.network-edge--ribbon {
+    opacity: 0.12;
+    filter: blur(0.4px);
 }
 
 .network-edge.is-linked {
-    stroke: rgba(15, 158, 171, 0.7);
-    stroke-width: 3.4;
     opacity: 1;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
 .network-edge--inset {
-    stroke: rgba(29, 36, 48, 0.16);
+}
+
+.network-edge-hitarea {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 18;
+    pointer-events: stroke;
+    vector-effect: non-scaling-stroke;
+}
+
+.network-edge-bundle.is-linked .network-edge-glow {
+    opacity: 0.82;
+}
+
+.network-edge-bundle.is-linked .network-edge--ribbon {
+    opacity: 0.22;
+}
+
+.network-edge-bundle.is-linked .network-edge {
+    opacity: 0.52;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.24));
+}
+
+.network-edge-bundle.is-linked .network-edge-particle {
+    opacity: 1 !important;
+}
+
+.network-edge-bundle.is-linked .network-edge-particle--blur {
+    opacity: 0.52 !important;
+}
+
+.route-tech-bundle,
+.route-tech-particles,
+.route-tech-particle-cluster {
+    isolation: isolate;
+}
+
+.route-tech-bundle {
+    cursor: pointer;
+}
+
+.route-tech {
+    mix-blend-mode: screen;
+    vector-effect: non-scaling-stroke;
+}
+
+.route-tech--ribbon {
+    opacity: 0.12;
+    filter: blur(0.45px);
+}
+
+.route-tech--glow {
+    opacity: 0.5;
+}
+
+.route-tech--core {
+    opacity: 0.14;
+}
+
+.route-tech-particle-cluster {
+    pointer-events: none;
+    animation: networkEdgeParticleFlicker 4.8s ease-in-out infinite alternate;
+    animation-delay: var(--spark-delay, 0s);
+}
+
+.route-tech-particle {
+    mix-blend-mode: screen;
+    vector-effect: non-scaling-stroke;
+}
+
+.route-tech-particle--blur {
+    filter: blur(3.4px);
+}
+
+.route-tech-hitarea {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 20;
+    pointer-events: stroke;
+    vector-effect: non-scaling-stroke;
+}
+
+.route-tech-bundle.is-linked .route-tech--glow {
+    opacity: 0.84;
+}
+
+.route-tech-bundle.is-linked .route-tech--ribbon {
+    opacity: 0.24;
+}
+
+.route-tech-bundle.is-linked .route-tech--core {
+    opacity: 0.46;
+}
+
+.route-tech-bundle.is-linked .route-tech-particle {
+    opacity: 1 !important;
+}
+
+.overlay-beacon {
+    pointer-events: none;
+    filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.18));
+}
+
+.overlay-beacon-point {
+    cursor: pointer;
+}
+
+.overlay-beacon-hitarea {
+    fill: transparent;
+    stroke: transparent;
+    pointer-events: all;
+}
+
+.overlay-beacon-ring,
+.overlay-beacon-core {
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+}
+
+.overlay-beacon-point.is-linked .overlay-beacon,
+.overlay-beacon-point.is-linked .overlay-beacon-core,
+.overlay-beacon-point.is-linked .overlay-beacon-ring {
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.26));
+}
+
+.overlay-beacon-point.is-linked .overlay-beacon-ring {
+    stroke: rgba(244, 250, 255, 0.94);
+}
+
+.overlay-beacon-point.is-linked .overlay-beacon-core {
+    fill: rgba(246, 251, 255, 0.98);
+}
+
+.network-node-beacon__shadow {
+    filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.08));
+}
+
+.network-node-beacon__core {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.24));
+}
+
+.network-node-base-ring {
+    fill: rgba(4, 8, 16, 0.7);
+    stroke: rgba(210, 228, 255, 0.52);
+    stroke-width: 1.1;
 }
 
 .network-label.is-linked,
@@ -1420,9 +1811,11 @@ button {
     fill: var(--muted);
     font-size: 12px;
     paint-order: stroke;
-    stroke: rgba(252, 248, 240, 0.98);
+    stroke: rgba(1, 3, 8, 0.94);
     stroke-width: 5px;
     stroke-linejoin: round;
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    letter-spacing: 0.05em;
 }
 
 .local-network-node.is-summary .network-label,
@@ -1472,11 +1865,15 @@ button {
 
 .local-inset-note {
     font-size: 11px;
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    letter-spacing: 0.04em;
 }
 
 .chart-note {
     fill: var(--muted);
     font-size: 13px;
+    font-family: "SF Mono", "Menlo", "Monaco", monospace;
+    letter-spacing: 0.04em;
 }
 
 .map-tooltip {
@@ -1485,10 +1882,10 @@ button {
     max-width: min(280px, calc(100vw - 24px));
     padding: 9px 12px;
     border-radius: 12px;
-    border: 1px solid rgba(29, 36, 48, 0.12);
+    border: 1px solid rgba(106, 161, 235, 0.2);
     color: var(--ink);
-    background: rgba(255, 252, 247, 0.96);
-    box-shadow: 0 16px 30px rgba(20, 28, 37, 0.16);
+    background: rgba(6, 11, 20, 0.94);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 28px rgba(85, 231, 255, 0.12), 0 16px 30px rgba(0, 0, 0, 0.32);
     backdrop-filter: blur(12px);
     font-size: 0.88rem;
     line-height: 1.35;
@@ -1516,6 +1913,26 @@ button {
 
     100% {
         stroke-dashoffset: -160;
+    }
+}
+
+@keyframes networkEdgePulse {
+    0% {
+        opacity: 0.42;
+    }
+
+    100% {
+        opacity: 0.96;
+    }
+}
+
+@keyframes networkEdgeParticleFlicker {
+    0% {
+        opacity: 0.74;
+    }
+
+    100% {
+        opacity: 1;
     }
 }
 
