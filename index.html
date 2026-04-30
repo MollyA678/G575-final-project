@@ -8,6 +8,7 @@
 </head>
 <body>
     <main class="app-shell">
+        <!-- Top-level narrative framing and view switching. -->
         <header class="hero">
             <div class="hero__copy">
                 <p class="hero__eyebrow">GEOG 575 Prototype Skeleton</p>
@@ -28,6 +29,7 @@
 
         <section class="workspace">
             <section class="main-panel">
+                <!-- Primary map stage with floating browse/layer controls. -->
                 <section class="viz-card viz-card--hero">
                     <div class="viz-card__header">
                         <div>
@@ -116,6 +118,7 @@
                 </section>
 
                 <div class="panel-row panel-row--analysis">
+                    <!-- Statistics panel is reused across views and swaps chart type in place. -->
                     <section class="stats-card">
                         <div class="stats-card__header">
                             <div>
@@ -138,6 +141,7 @@
                     </section>
 
                     <section class="detail-card detail-card--snapshot">
+                        <!-- Compact metric readout for the current origin / place / filter state. -->
                         <div class="section-heading">
                             <p class="section-heading__eyebrow">Snapshot</p>
                             <h2 class="section-heading__title">Selected Context</h2>
@@ -147,6 +151,7 @@
                 </div>
 
                 <div class="details-grid details-grid--secondary">
+                    <!-- Longer method / interpretation copy lives below the main dashboard row. -->
                     <section class="detail-card">
                         <div>
                             <div class="section-heading">
@@ -161,6 +166,7 @@
         </section>
     </main>
 
+    <!-- Prebuilt geometry and curated GNIS sample data load before the interaction logic. -->
     <script src="js/mapShapes.js"></script>
     <script src="js/placeData.js"></script>
     <script src="js/main.js"></script>

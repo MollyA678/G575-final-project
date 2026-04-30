@@ -7,6 +7,7 @@ from pyproj import Transformer
 ROOT = Path(__file__).resolve().parents[1]
 STATE_ZIP = ROOT / "data" / "cb_2024_us_state_5m.zip"
 
+# These view boxes define the shared screen-space coordinates used by both the build scripts and the browser.
 WORLD_VIEW = {
     "width": 1000,
     "height": 560,
@@ -31,6 +32,7 @@ CONTIGUOUS_EXCLUDE = {"AK", "HI", "PR", "VI", "MP", "GU", "AS"}
 
 
 def project_world_point(lat, lon):
+    # The world view uses a lightweight equirectangular projection because it only needs broad origin context.
     lon_range = WORLD_VIEW["lon_max"] - WORLD_VIEW["lon_min"]
     lat_range = WORLD_VIEW["lat_max"] - WORLD_VIEW["lat_min"]
     x = WORLD_VIEW["padding_x"] + (
@@ -43,6 +45,7 @@ def project_world_point(lat, lon):
 
 
 def _fit_bounds(min_x, min_y, max_x, max_y, width, height, padding_x, padding_y):
+    # Fit the projected contiguous U.S. bounds into the SVG frame while preserving aspect ratio.
     usable_width = width - (padding_x * 2)
     usable_height = height - (padding_y * 2)
     scale = min(usable_width / (max_x - min_x), usable_height / (max_y - min_y))
@@ -60,6 +63,7 @@ def _fit_bounds(min_x, min_y, max_x, max_y, width, height, padding_x, padding_y)
 
 
 def build_usa_projector():
+    # EPSG:2163 gives a stable national-scale U.S. projection for the contiguous-state basemap.
     states = gpd.read_file(f"zip://{STATE_ZIP}")
     states = states[~states["STUSPS"].isin(CONTIGUOUS_EXCLUDE)].copy()
     states = states.to_crs("EPSG:2163")

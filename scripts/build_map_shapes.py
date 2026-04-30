@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORLD_ZIP = ROOT / "data" / "ne_110m_admin_0_countries.zip"
 OUTPUT_JS = ROOT / "js" / "mapShapes.js"
 
+# Multiple simplification levels let the browser swap geometry detail as users zoom in and out.
 WORLD_DETAIL_TOLERANCES = {
     "coarse": 0.14,
     "medium": 0.06,
@@ -32,6 +33,7 @@ def geometry_to_svg_path(geometry, projector):
         return ""
 
     def ring_to_path(ring):
+        # SVG paths are cheaper to ship than GeoJSON and easier to drop straight into inline markup.
         coords = [projector(x, y) for x, y in ring.coords]
         return "M " + " L ".join(format_point(point) for point in coords) + " Z"
 
@@ -50,6 +52,7 @@ def geometry_to_svg_path(geometry, projector):
 
 
 def build_path_levels(geometry, projector, tolerances):
+    # Precompute coarse/medium/fine paths once so the browser only switches strings at runtime.
     paths = {}
 
     for level, tolerance in tolerances.items():
@@ -63,6 +66,7 @@ def build_path_levels(geometry, projector, tolerances):
 
 
 def build_world_shapes():
+    # Natural Earth provides the global context polygons and one representative point per country for labels.
     world = gpd.read_file(f"zip://{WORLD_ZIP}")
     world = world[world["NAME"] != "Antarctica"].copy()
     countries = []
@@ -91,6 +95,7 @@ def build_world_shapes():
 
 
 def build_usa_shapes():
+    # The U.S. map is projected once here so the front-end only deals with screen coordinates.
     projection = build_usa_projector()
     states = projection["states_projected"].copy()
     state_paths = []
@@ -130,6 +135,7 @@ def build_usa_shapes():
 
 
 def main():
+    # Like the place dataset, shapes are emitted as a JS assignment for easy file:// loading.
     output = {
         "meta": {
             "sources": [

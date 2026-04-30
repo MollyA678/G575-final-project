@@ -1,6 +1,7 @@
 const DATA = window.placeDiffusionData;
 const SHAPES = window.realMapShapes;
 
+// Map each cultural origin group onto the country polygons we actually have available in the world basemap.
 const ORIGIN_COUNTRY_LOOKUP = {
     England: "United Kingdom",
     Germany: "Germany",
@@ -17,6 +18,7 @@ const COUNTRY_ORIGIN_LOOKUP = Object.fromEntries(
     Object.entries(ORIGIN_COUNTRY_LOOKUP).map(([originName, countryName]) => [countryName, originName])
 );
 
+// Override the curated dataset accents so every coordinated view shares the same neon color system.
 const ORIGIN_ACCENT_OVERRIDES = {
     England: "#63ebff",
     Germany: "#8ea7ff",
@@ -40,6 +42,7 @@ const FEATURE_OPTIONS = Object.entries(DATA.meta.regionLabels).map(([key, label]
     label
 }));
 
+// Proxy eras still matter for filtering, even though some views now emphasize distance more strongly.
 const ERAS = [
     { key: "early", label: DATA.meta.eraLabels.early, detail: "statehood proxy", color: "#63ebff" },
     { key: "expansion", label: DATA.meta.eraLabels.expansion, detail: "statehood proxy", color: "#86a8ff" },
@@ -128,6 +131,7 @@ const STAT_OPTIONS = {
     }
 };
 
+// Copy for the main stage is centralized here so switching views updates titles and descriptions together.
 const VIEW_COPY = {
     global: {
         kicker: "Global diffusion view",
@@ -149,6 +153,7 @@ const VIEW_COPY = {
     }
 };
 
+// Shared UI state keeps the maps, chart, filters, and local inset synchronized.
 const state = {
     search: "",
     selectedOrigin: "Germany",
@@ -189,6 +194,8 @@ const USA_STATE_SHAPES = new Map(
 
 const elements = {};
 
+// Generic helpers -----------------------------------------------------------
+
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
@@ -228,6 +235,7 @@ function parseLinkKeys(value) {
         .filter(Boolean);
 }
 
+// Resolve a hovered or clicked element into one normalized highlight payload.
 function getHighlightPayload(target) {
     if (target?.dataset?.focusKeys) {
         const keys = parseLinkKeys(target.dataset.focusKeys);
@@ -284,6 +292,7 @@ function colorWithAlpha(color, alpha) {
 }
 
 function mixColors(colorA, colorB, t, alpha = 1) {
+    // Distance gradients are reused in both charts and node styling, so we mix colors in JS once.
     const parseColor = (color) => {
         if (color.startsWith("#")) {
             const sanitized = color.replace("#", "");
@@ -325,6 +334,7 @@ function hashString(value) {
     return hash >>> 0;
 }
 
+// Seeded helpers keep organic layouts stable across rerenders without storing explicit coordinates.
 function seededUnit(seedKey, salt = 0) {
     const seed = hashString(`${seedKey}:${salt}`);
     const raw = Math.sin(seed * 0.00000123 + salt * 17.137) * 43758.5453123;
@@ -360,6 +370,7 @@ function buildOrganicArcPlacement(seedKey, index, count, options) {
     };
 }
 
+// Fan placement is used when a node family should spread across several rings instead of one arc.
 function buildOrganicFanPlacement(seedKey, index, count, options) {
     const perRing = Math.max(options.perRing || count || 1, 1);
     const ringIndex = Math.floor(index / perRing);
@@ -384,6 +395,7 @@ function buildOrganicFanPlacement(seedKey, index, count, options) {
     };
 }
 
+// Distance placement keeps nodes ordered by one scalar metric while still allowing slight organic jitter.
 function buildDistancePlacement(seedKey, index, count, options) {
     const t = count <= 1 ? 0.5 : index / (count - 1);
     const angle = options.angleStart
@@ -427,6 +439,7 @@ function curvedNetworkPath(from, to, amount = 40, direction = 1) {
     return getCurvedNetworkGeometry(from, to, amount, direction).path;
 }
 
+// Sample a point and its local tangent/normal so one quadratic path can emit many short light strokes.
 function sampleQuadraticPoint(geometry, t) {
     const clampedT = clamp(t, 0, 1);
     const inverse = 1 - clampedT;
@@ -466,6 +479,7 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
     );
 
     return Array.from({ length: count }, (_, index) => {
+        // The trail is built from many tiny offset segments so it reads more like light painting than a dashed line.
         const baseT = count <= 1 ? 0.5 : index / (count - 1);
         const tJitter = seededRange(`${seedKey}:particle:${index}`, -0.01, 0.01, 1);
         const t = clamp(baseT + tJitter, 0, 1);
@@ -761,6 +775,7 @@ function getBeaconGeometry(anchorX, anchorY, options = {}) {
     };
 }
 
+// Overlay beacons live outside the zoomed polygon layer so their screen footprint can remain stable.
 function renderOverlayBeaconPoint(mapType, x, y, options = {}) {
     const point = transformMapPoint(mapType, x, y);
     const height = options.height || 18;
@@ -822,6 +837,7 @@ function renderOverlayCurveAttrs(mapType, from, to, lift) {
     return `d="${buildOverlayCurvePath(mapType, from, to, lift)}" data-overlay-path="quadratic" data-map-from-x="${from.x}" data-map-from-y="${from.y}" data-map-to-x="${to.x}" data-map-to-y="${to.y}" data-map-lift="${lift}"`;
 }
 
+// Tech trails are drawn as a ribbon plus many short strokes, which makes them read closer to luminous flow sketches.
 function renderOverlayTechTrail(mapType, from, to, lift, options = {}) {
     const geometry = buildOverlayCurveGeometry(mapType, from, to, lift);
     const distance = Math.hypot(geometry.to.x - geometry.from.x, geometry.to.y - geometry.from.y);
@@ -869,6 +885,7 @@ function applyMapTransform(mapType) {
         layer.setAttribute("transform", getMapTransformString(mapType));
     }
 
+    // Geometry detail, overlay positions, counter-scaled local artifacts, and labels all need to update together on zoom.
     syncMapDetail(mapType);
     syncMapOverlays(mapType);
     syncLocalStaticArtifacts(mapType);
@@ -955,6 +972,7 @@ function syncMapOverlays(mapType) {
     });
 }
 
+// Counter-scale local-network nodes and stroke clusters so they do not balloon while the parent SVG zooms.
 function syncLocalStaticArtifacts(mapType) {
     if (mapType !== "local-main" && !String(mapType).startsWith("local-inset-")) {
         return;
@@ -1412,6 +1430,7 @@ function renderTimelineChart(place) {
     `;
 }
 
+// Show visible records as a direct kilometer histogram so distance reads as a continuous distribution.
 function renderDistanceChart(place, visibleContext) {
     const width = 760;
     const height = 250;
@@ -1442,6 +1461,7 @@ function renderDistanceChart(place, visibleContext) {
             ${bins.length ? `<path class="hist-line" d="${topLine}"></path>` : ""}
             ${bins
                 .map((bin, index) => {
+                    // Each bar represents one explicit kilometer span instead of a grouped era/category stack.
                     const barX = padding.left + index * slotWidth + slotWidth / 2 - barWidth / 2;
                     const barHeight = (bin.count / maxValue) * innerHeight;
                     const barY = padding.top + innerHeight - barHeight;
@@ -1611,6 +1631,7 @@ function buildDistanceStateEntries(points) {
         );
 }
 
+// Keep the legacy short/medium/long summary available for older text copy while newer charts use direct bins.
 function buildDistanceBars(points) {
     return ["short", "medium", "long"].reduce((memo, band) => {
         memo[band] = ERAS.reduce((eraMemo, era) => {
@@ -1621,6 +1642,7 @@ function buildDistanceBars(points) {
     }, {});
 }
 
+// Pick human-readable kilometer steps so the histogram does not produce awkward bin labels.
 function getNiceDistanceStep(maxDistanceKm) {
     const target = Math.max(maxDistanceKm / 6, 1);
     const steps = [50, 100, 200, 250, 400, 500, 750, 1000, 1500, 2000, 2500, 3000];
@@ -1647,6 +1669,7 @@ function buildDistanceHistogram(points) {
         count: 0
     }));
 
+    // Histogram bins are built from the currently visible records only, so filters and chart always agree.
     points.forEach((point) => {
         const distanceKm = point.distanceKm || 0;
         const binIndex = Math.min(Math.floor(distanceKm / stepKm), bins.length - 1);
@@ -2122,6 +2145,7 @@ function renderUsaView(origin, place) {
 }
 
 function buildLocalNetwork(origin, place) {
+    // The full local view is a schematic, distance-driven network rather than a literal geographic inset.
     const visibleContext = buildVisibleContext(place);
     const seedRoot = `${origin.id}:${place.id}:local`;
     const originNode = {
@@ -2204,6 +2228,7 @@ function buildLocalNetwork(origin, place) {
         1,
         ...visibleContext.distanceStateEntries.map((entry) => entry.avgDistanceKm || 0)
     );
+    // Local state nodes are ordered by mean corridor distance instead of grouped into regional clusters.
     const stateNodes = visibleContext.distanceStateEntries.map((entry, index) => {
         const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
         const placement = buildDistancePlacement(
@@ -2288,6 +2313,7 @@ function buildLocalNetwork(origin, place) {
 }
 
 function buildInsetLocalNetwork(origin, place) {
+    // The inset uses the same relational logic as the full local view, but trims siblings for legibility.
     const visibleContext = buildVisibleContext(place);
     const seedRoot = `${origin.id}:${place.id}:inset`;
     const siblingPlaces = origin.places
@@ -2372,6 +2398,7 @@ function buildInsetLocalNetwork(origin, place) {
         1,
         ...visibleContext.distanceStateEntries.map((entry) => entry.avgDistanceKm || 0)
     );
+    // The inset mirrors the same distance-first logic as the full local view, just on a tighter radius.
     const stateNodes = visibleContext.distanceStateEntries.map((entry, index) => {
         const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
         const placement = buildDistancePlacement(
@@ -2453,6 +2480,7 @@ function buildInsetLocalNetwork(origin, place) {
 }
 
 function renderNetworkEdge(edge, nodesById, context = "main") {
+    // Edges are rendered as layered ribbons plus short glowing strokes to echo the reference "light trail" aesthetic.
     const from = typeof edge.from === "string" ? nodesById.get(edge.from) : edge.from;
     const to = typeof edge.to === "string" ? nodesById.get(edge.to) : edge.to;
 
@@ -2670,6 +2698,7 @@ function renderInsetNetworkNode(node) {
 }
 
 function renderLocalInset(origin, place, contextLabel) {
+    // The floating inset is a compact second view of the same local network, not a separate dataset.
     const network = buildInsetLocalNetwork(origin, place);
     const inset = getInsetWindowState(contextLabel);
     const collapsed = Boolean(inset?.collapsed);
@@ -2726,6 +2755,7 @@ function renderLocalInset(origin, place, contextLabel) {
 }
 
 function renderMiniMap(origin, place) {
+    // The mini map gives the local view a geographic companion without leaving the distance-first network layout.
     const visibleContext = buildVisibleContext(place);
     const { visiblePoints, stateCounts } = visibleContext;
     const hub = {
@@ -2761,6 +2791,7 @@ function renderMiniMap(origin, place) {
 }
 
 function renderLocalView(origin, place) {
+    // Local view pairs the relationship network with supporting geographic context and interpretation notes.
     const network = buildLocalNetwork(origin, place);
     const nodeLookup = new Map(network.nodes.map((node) => [node.id, node]));
     const panZoomType = "local-main";
@@ -2829,6 +2860,7 @@ function renderLocalView(origin, place) {
 }
 
 function renderVizStage(origin, place) {
+    // The main stage swaps the central visualization while leaving the surrounding dashboard chrome intact.
     const viewConfig = VIEW_COPY[state.selectedView];
     elements.viewKicker.textContent = viewConfig.kicker;
     elements.viewTitle.textContent = viewConfig.title(origin, place);
@@ -2850,6 +2882,7 @@ function renderVizStage(origin, place) {
 }
 
 function renderDetails(origin, place) {
+    // Snapshot metrics mix global context, anchor metadata, and filter-aware counts in one compact list.
     const visibleContext = buildVisibleContext(place);
     const topState = hasActiveDataFilters()
         ? (visibleContext.topStates[0] || null)
@@ -3118,6 +3151,7 @@ function endInsetInteraction() {
 }
 
 function renderApp() {
+    // One render pass keeps list state, charts, maps, and floating insets in sync after every interaction.
     const valid = normalizeSelection();
     state.mapDrag = null;
     state.insetInteraction = null;
@@ -3153,6 +3187,7 @@ function renderApp() {
 }
 
 function resetCurrentFocus() {
+    // Reset returns filters, maps, and current place to the default state for the selected origin.
     const origin = getSelectedOrigin();
     state.search = "";
     state.activeEras = new Set(ERAS.map((era) => era.key));
@@ -3260,6 +3295,7 @@ function handleClick(event) {
 
     const stateFocusTarget = event.target.closest("[data-state-focus]");
     if (stateFocusTarget && elements.vizStage.contains(stateFocusTarget)) {
+        // State focus is handled before generic pinning so map/local-view filtering updates immediately.
         const nextState = stateFocusTarget.dataset.stateFocus;
         const payload = getHighlightPayload(stateFocusTarget);
         state.focusedState = state.focusedState === nextState ? null : nextState;
@@ -3378,6 +3414,7 @@ function handleSearch(event) {
 }
 
 function init() {
+    // Cache static DOM references once, then wire the dashboard through document-level delegated handlers.
     elements.originList = document.getElementById("origin-list");
     elements.placeList = document.getElementById("place-list");
     elements.featureFilters = document.getElementById("feature-filters");

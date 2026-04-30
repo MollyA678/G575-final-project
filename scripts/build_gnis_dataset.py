@@ -13,6 +13,7 @@ POPULATED_ZIP = ROOT / "data" / "PopulatedPlaces_National_Text.zip"
 DESCRIPTION_ZIP = ROOT / "data" / "FeatureDescriptionHistory_National_Text.zip"
 OUTPUT_JS = ROOT / "js" / "placeData.js"
 
+# These lookup tables convert raw GNIS rows into the region and proxy-era categories used in the prototype.
 STATEHOOD = {
     "Alabama": 1819,
     "Arizona": 1912,
@@ -130,6 +131,7 @@ ERAS = {
     "modern": "1851+ proxy",
 }
 
+# The curated sample keeps the front-end manageable while still using exact GNIS matches for every place.
 ORIGIN_CONFIG = [
     {
         "name": "England",
@@ -248,6 +250,7 @@ ORIGIN_CONFIG = [
 
 
 def read_pipe_zip(zip_path, inner_path):
+    # GNIS topical downloads ship as pipe-delimited text inside zips rather than CSVs.
     with zipfile.ZipFile(zip_path) as archive:
         with archive.open(inner_path) as handle:
             text = handle.read().decode("utf-8-sig")
@@ -270,6 +273,7 @@ def to_float(value):
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
+    # Corridor distance is used both for symbology and for the distance-first local network layout.
     radius = 6371.0
     phi1 = math.radians(lat1)
     phi2 = math.radians(lat2)
@@ -280,6 +284,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
         + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
     )
     return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
 
 def infer_era(state_name):
     year = STATEHOOD[state_name]
@@ -308,6 +313,7 @@ def format_history(description, history):
 
 
 def build_dataset():
+    # Build one front-end ready object so the browser can stay static and data-driven with no extra fetch step.
     usa_projection = build_usa_projector()
     populated_rows = read_pipe_zip(POPULATED_ZIP, "Text/PopulatedPlaces_National.txt")
     target_names = {
@@ -320,6 +326,7 @@ def build_dataset():
     feature_ids = set()
 
     for row in populated_rows:
+        # Filter early so we only enrich the curated names that the interface actually exposes.
         name = row["feature_name"]
         state_name = row["state_name"]
         lat = to_float(row["prim_lat_dec"])
@@ -342,6 +349,7 @@ def build_dataset():
         DESCRIPTION_ZIP, "Text/FeatureDescriptionHistory_National.txt"
     )
     for row in description_rows:
+        # History text is optional, so we only keep records tied to the selected GNIS features.
         feature_id = row["feature_id"]
         if feature_id in feature_ids:
             descriptions[feature_id] = {
@@ -383,6 +391,7 @@ def build_dataset():
         }
 
         for place_config in origin_config["places"]:
+            # Each place keeps both record-level geometry and pre-aggregated summaries for the coordinated charts/views.
             raw_records = rows_by_name[place_config["name"]]
             enriched_records = []
 
@@ -549,6 +558,7 @@ def build_dataset():
 
 
 def main():
+    # Emit a plain JS assignment so the prototype can be opened directly from file:// during class critiques.
     dataset = build_dataset()
     OUTPUT_JS.write_text(
         "window.placeDiffusionData = " + json.dumps(dataset, ensure_ascii=False, indent=2) + ";\n",

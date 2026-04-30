@@ -1,3 +1,4 @@
+/* Design tokens and global background surfaces. */
 :root {
     --paper: #03060d;
     --paper-strong: rgba(8, 13, 24, 0.84);
@@ -63,6 +64,7 @@ button {
     padding: 22px;
 }
 
+/* Top-level narrative framing and view switching. */
 .hero {
     display: grid;
     gap: 14px;
@@ -183,6 +185,7 @@ button {
     overflow: hidden;
 }
 
+/* Shared card treatment keeps panels and controls in the same "glass lab dashboard" family. */
 .panel-card,
 .stats-card,
 .legend-card,
@@ -450,6 +453,7 @@ button {
     outline: none;
 }
 
+/* Statistic cards use the same dark frame, but with extra breathing room for SVG plots. */
 .chart-frame {
     min-height: 240px;
     border-radius: 28px;
@@ -519,6 +523,7 @@ button {
     padding: 12px 16px;
 }
 
+/* The map shell hosts the hero frame plus the two collapsible floating side panels. */
 .map-shell {
     --floating-gap: 18px;
     --floating-width: 318px;
@@ -701,6 +706,7 @@ button {
     isolation: isolate;
 }
 
+/* Basemap polygons stay understated so the animated overlays and labels carry the story. */
 .viz-frame::before {
     content: "";
     position: absolute;
@@ -939,6 +945,7 @@ button {
     justify-content: center;
 }
 
+/* Basemap surfaces stay quiet so the diffusion overlays read as the main signal. */
 .map-surface,
 .plot-surface {
     fill: rgba(5, 9, 17, 0.94);
@@ -1264,6 +1271,7 @@ button {
     filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
+/* Chart surfaces share the same neon frame language as the maps, but with calmer marks for readability. */
 .timeline-line {
     fill: none;
     stroke: var(--accent);
@@ -1521,6 +1529,7 @@ button {
     background: rgba(8, 14, 24, 0.56);
 }
 
+/* Local-network nodes and particle trails intentionally read more like beacons and light strokes than chart symbols. */
 .network-node-glow,
 .network-node-shell {
     pointer-events: none;
@@ -1681,6 +1690,7 @@ button {
     opacity: 0.52 !important;
 }
 
+/* Map diffusion routes reuse the same layered-light vocabulary as the local network, just at geographic scale. */
 .route-tech-bundle,
 .route-tech-particles,
 .route-tech-particle-cluster {
