@@ -551,6 +551,7 @@ button {
     flex-direction: row-reverse;
 }
 
+/* Collapsed mode shrinks the panel to just the vertical toggle handle */
 .floating-panel.is-collapsed {
     width: 54px;
 }
@@ -571,6 +572,7 @@ button {
     box-shadow: var(--panel-glow);
     backdrop-filter: blur(16px);
     color: var(--ink);
+    /* Vertical text so the toggle reads top-to-bottom along the side of the page */
     writing-mode: vertical-rl;
     text-orientation: mixed;
     transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
@@ -620,6 +622,7 @@ button {
     pointer-events: none;
 }
 
+/* Left and right panels each slide outward toward their own edge */
 .floating-panel--left.is-collapsed .floating-panel__body {
     margin-left: 0;
     transform: translateX(-16px);
@@ -702,6 +705,7 @@ button {
     box-shadow: var(--panel-glow);
 }
 
+/* New stacking context so the floating inset's z-index stays scoped to this frame */
 .map-frame {
     isolation: isolate;
 }
@@ -730,6 +734,7 @@ button {
 
 .interactive-map {
     cursor: grab;
+    /* Disable native touch panning/zoom so the JS pan-zoom handler owns gestures */
     touch-action: none;
     user-select: none;
 }
@@ -746,6 +751,7 @@ button {
     display: grid;
     gap: 8px;
     justify-items: end;
+    /* Children opt back in with pointer-events: auto, so empty space stays click-through to the map */
     pointer-events: none;
 }
 
@@ -917,6 +923,7 @@ button {
     justify-content: space-between;
 }
 
+/* Collapsed inset hides everything but the toggle and a vertical label */
 .local-inset-card.is-collapsed .annotation-card__eyebrow,
 .local-inset-card.is-collapsed .local-inset-card__toolbar-copy h3,
 .local-inset-card.is-collapsed .local-inset-card__readout,
@@ -962,6 +969,7 @@ button {
 .grid-line {
     stroke: rgba(94, 136, 208, 0.12);
     stroke-width: 1;
+    /* Keep the 1px stroke visually constant regardless of SVG zoom level */
     vector-effect: non-scaling-stroke;
 }
 
@@ -1006,6 +1014,7 @@ button {
     filter: drop-shadow(0 0 12px rgba(85, 231, 255, 0.16));
 }
 
+/* Stroke weight scales up alongside polygon detail level */
 .interactive-map[data-detail-level="coarse"] .world-country {
     stroke-width: 1.05;
 }
@@ -1109,6 +1118,7 @@ button {
     stroke-width: 3.6;
     opacity: 0.78;
     vector-effect: non-scaling-stroke;
+    /* Screen blending makes overlapping routes brighten rather than mask each other */
     mix-blend-mode: screen;
     filter: drop-shadow(0 0 8px rgba(85, 231, 255, 0.14));
 }
@@ -1150,6 +1160,7 @@ button {
     letter-spacing: 0.04em;
 }
 
+/* draws the dark stroke first then fill on top, producing an outline halo around the text */
 .network-label {
     paint-order: stroke;
     stroke: rgba(1, 3, 8, 0.94);
@@ -1158,6 +1169,7 @@ button {
     filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
+/* Default labels off pointer-events so the polygons underneath stay clickable, then re-enable on label types that act as buttons */
 .map-label-layer {
     pointer-events: none;
 }
@@ -1658,9 +1670,10 @@ button {
     filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
 }
 
-.network-edge--inset {
-}
+/*.network-edge--inset {
+}*/
 
+/* Invisible wide stroke painted on top of the visible thin edge to provide a generous click/hover hitbox */
 .network-edge-hitarea {
     fill: none;
     stroke: transparent;
@@ -1682,6 +1695,7 @@ button {
     filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.24));
 }
 
+/* !important overrides the inline opacity that the JS-generated particle SVGs set per element */
 .network-edge-bundle.is-linked .network-edge-particle {
     opacity: 1 !important;
 }
@@ -1902,6 +1916,7 @@ button {
     pointer-events: none;
 }
 
+/* Each node gets its own --drift-x / --drift-y / --drift-duration / --drift-delay set inline by the JS layout step, so every node drifts on its own seeded path */
 @keyframes networkNodeDrift {
     0% {
         transform: translate(0, 0);
@@ -1946,6 +1961,7 @@ button {
     }
 }
 
+/* Standard screen-reader-only utility that hides content visually while keeping it in the accessibility tree */
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -1966,6 +1982,7 @@ button {
     }
 }
 
+/* Below ~1180px the floating side panels lose their absolute positioning and stack inline, since there isn't enough horizontal room to overlay them on the map */
 @media (max-width: 1180px) {
     .panel-row,
     .details-grid,
@@ -2080,6 +2097,7 @@ button {
     }
 }
 
+/* Phone-sized layout: collapse all multi-column grids into single columns */
 @media (max-width: 860px) {
     .app-shell {
         padding: 18px;

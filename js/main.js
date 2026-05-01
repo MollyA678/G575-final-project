@@ -1,3 +1,4 @@
+// main.js
 const DATA = window.placeDiffusionData;
 const SHAPES = window.realMapShapes;
 
@@ -88,6 +89,7 @@ const INSET_SCALE_LIMITS = {
     step: 0.1
 };
 
+// As the user zooms in, swap to higher-detail polygon paths to avoid drawing oversimplified shapes up close
 const MAP_DETAIL_THRESHOLDS = {
     global: [
         { maxScale: 0.95, level: "coarse" },
@@ -208,6 +210,7 @@ function escapeAttr(value) {
         .replaceAll(">", "&gt;");
 }
 
+// Encode a {type, value} pair as a single token so cross-view highlighting can compare keys with simple string equality
 function createLinkKey(type, value) {
     return `${type}:${encodeURIComponent(String(value).toLowerCase())}`;
 }
@@ -265,6 +268,7 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Apply a new alpha to any color string we might encounter (rgba, rgb, or hex)
 function colorWithAlpha(color, alpha) {
     if (!color) {
         return `rgba(255, 255, 255, ${alpha})`;
@@ -322,6 +326,7 @@ function mixColors(colorA, colorB, t, alpha = 1) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Standard FNV-1a 32-bit hash
 function hashString(value) {
     let hash = 2166136261;
     const text = String(value);
@@ -335,6 +340,7 @@ function hashString(value) {
 }
 
 // Seeded helpers keep organic layouts stable across rerenders without storing explicit coordinates.
+// Return a deterministic pseudo-random value in [0, 1) for a given seed/salt pair
 function seededUnit(seedKey, salt = 0) {
     const seed = hashString(`${seedKey}:${salt}`);
     const raw = Math.sin(seed * 0.00000123 + salt * 17.137) * 43758.5453123;
@@ -353,6 +359,7 @@ function polarPoint(cx, cy, radius, angleDegrees) {
     };
 }
 
+// Distribute `count` items along an arc with seeded jitter on angle, radius, and a slow drift used by the CSS animation
 function buildOrganicArcPlacement(seedKey, index, count, options) {
     const t = count <= 1 ? 0.5 : index / (count - 1);
     const baseAngle = options.angleStart + (options.angleEnd - options.angleStart) * t;
@@ -443,6 +450,7 @@ function curvedNetworkPath(from, to, amount = 40, direction = 1) {
 function sampleQuadraticPoint(geometry, t) {
     const clampedT = clamp(t, 0, 1);
     const inverse = 1 - clampedT;
+    // Standard quadratic Bezier evaluation: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
     const x =
         inverse * inverse * geometry.from.x
         + 2 * inverse * clampedT * geometry.controlX
@@ -451,6 +459,7 @@ function sampleQuadraticPoint(geometry, t) {
         inverse * inverse * geometry.from.y
         + 2 * inverse * clampedT * geometry.controlY
         + clampedT * clampedT * geometry.to.y;
+    // Tangent derivative B'(t) = 2(1-t)(P1-P0) + 2t(P2-P1); used to derive the unit normal for offset strokes
     const dx =
         2 * inverse * (geometry.controlX - geometry.from.x)
         + 2 * clampedT * (geometry.to.x - geometry.controlX);
@@ -469,9 +478,11 @@ function sampleQuadraticPoint(geometry, t) {
     };
 }
 
+// Generate the per-particle layout for a "tech trail"
 function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
     const context = options.context || "main";
     const primary = Boolean(options.primary);
+    // Particle count scales with the curve's screen length, but is bounded so very long routes don't render thousands of strokes
     const count = clamp(
         Math.round(options.distance / (context === "inset" ? 18 : 20)),
         context === "inset" ? 8 : 10,
@@ -500,6 +511,7 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
             context === "inset" ? 0.24 : 0.32,
             4
         );
+        // centerBias is 1 at the midpoint of the curve and 0 at the endpoints; used to fatten/brighten strokes near the middle
         const centerBias = 1 - Math.abs(baseT - 0.5) * 2;
         const thicknessBase = primary
             ? (context === "inset" ? 0.86 : 1.02)
@@ -531,6 +543,7 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
     }).filter((descriptor) => !descriptor.hidden);
 }
 
+// Materialize one particle descriptor into actual line endpoints: shift along the curve normal, then extend along its tangent
 function describeTrailSegment(geometry, descriptor) {
     const shiftedX = descriptor.sample.x + descriptor.sample.normalX * descriptor.lateralOffset;
     const shiftedY = descriptor.sample.y + descriptor.sample.normalY * descriptor.lateralOffset;
@@ -549,6 +562,7 @@ function describeTrailSegment(geometry, descriptor) {
     };
 }
 
+// Expose the per-node drift parameters as CSS custom properties so the keyframe animation can read them per element.
 function getOrganicMotionStyle(node) {
     return [
         `--drift-x:${(node.driftX || 0).toFixed(1)}px`,
@@ -713,14 +727,17 @@ function getMapTransformString(mapType) {
     return `translate(${view.tx.toFixed(1)} ${view.ty.toFixed(1)}) scale(${view.scale.toFixed(3)})`;
 }
 
+// Shrink labels as the map zooms in so they don't overwhelm the polygons
 function getScaledLabelSize(baseSize, scale) {
     return Math.max(baseSize * 0.5, baseSize / Math.pow(Math.max(scale, 1), 0.78));
 }
 
+// Same idea for stroke widths: shrink with zoom but never thinner than 42% of the base width
 function getScaledStrokeWidth(baseWidth, scale) {
     return Math.max(baseWidth * 0.42, baseWidth / Math.pow(Math.max(scale, 1), 0.9));
 }
 
+// Constrain pan offsets so the user can't drag the map out from behind its viewport
 function clampMapView(mapType) {
     const view = state.mapViews[mapType];
     const viewbox = getPanZoomViewbox(mapType);
@@ -732,6 +749,7 @@ function clampMapView(mapType) {
         return;
     }
 
+    // At scale s, the scaled viewbox is s*W wide; valid translation x lives in negative or zero
     const minTx = viewbox.width - viewbox.width * view.scale;
     const minTy = viewbox.height - viewbox.height * view.scale;
 
@@ -994,6 +1012,7 @@ function syncLocalStaticArtifacts(mapType) {
             return;
         }
 
+        // Translate to the anchor, scale by 1/zoom, then translate back: rotation-free way to undo the parent zoom around a fixed point
         const inverse = 1 / scale;
         element.setAttribute(
             "transform",
@@ -1030,6 +1049,7 @@ function syncMapDetail(mapType) {
 
     const detailLevel = getMapDetailLevel(mapType);
 
+    // Skip the DOM walk if the active detail level hasn't changed since the last call
     if (svg.dataset.detailLevel === detailLevel) {
         return;
     }
@@ -1061,6 +1081,7 @@ function syncMapDetail(mapType) {
     }
 }
 
+// Zoom toward (anchorX, anchorY) such that the point under the cursor stays in place after the scale change
 function zoomMapAt(mapType, targetScale, anchorX, anchorY) {
     const view = state.mapViews[mapType];
     const nextScale = clamp(targetScale, 1, 8);
@@ -1069,6 +1090,7 @@ function zoomMapAt(mapType, targetScale, anchorX, anchorY) {
         return;
     }
 
+    // Solve "anchor (in screen space) is unchanged" for the new tx/ty given the ratio of new to old scale
     const scaleRatio = nextScale / view.scale;
     view.tx = anchorX - (anchorX - view.tx) * scaleRatio;
     view.ty = anchorY - (anchorY - view.ty) * scaleRatio;
@@ -1213,6 +1235,7 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
     `;
 }
 
+// Repair selection state if the selected origin/place no longer exists (e.g. after data changes), returning false if there is nothing to render
 function normalizeSelection() {
     const originEntries = getOriginEntries();
 
@@ -1338,6 +1361,7 @@ function renderFeatureFilters() {
 }
 
 function renderEraLegend(place) {
+    // Tally visible records per era so the legend can show live counts that respect the active filters
     const counts = place.usaPoints
         .filter((point) =>
             state.activeFeatures.has(point.featureKey) &&
@@ -1382,8 +1406,10 @@ function renderTimelineChart(place) {
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const points = place.timelinePoints;
+    // Add a couple of units above the highest value so the line never grazes the top of the plot frame
     const maxValue = Math.max(...points.map((point) => point.value), 1) + 2;
 
+    // SVG y grows downward, so larger values map to a smaller y to flip the line right-side up
     const scaledPoints = points.map((point, index) => ({
         ...point,
         x: padding.left + (index * innerWidth) / Math.max(points.length - 1, 1),
@@ -1394,6 +1420,7 @@ function renderTimelineChart(place) {
         .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
         .join(" ");
 
+    // Show roughly 8 year labels along the x-axis regardless of how many timeline points there are
     const labelEvery = Math.max(1, Math.ceil(points.length / 8));
     const highlighted = scaledPoints[Math.max(0, scaledPoints.length - 1)];
 
@@ -1644,6 +1671,7 @@ function buildDistanceBars(points) {
 
 // Pick human-readable kilometer steps so the histogram does not produce awkward bin labels.
 function getNiceDistanceStep(maxDistanceKm) {
+    // Aim for roughly six bins, then snap up to the nearest nice step value
     const target = Math.max(maxDistanceKm / 6, 1);
     const steps = [50, 100, 200, 250, 400, 500, 750, 1000, 1500, 2000, 2500, 3000];
     return steps.find((step) => step >= target) || Math.ceil(target / 1000) * 1000;
@@ -1684,6 +1712,7 @@ function buildDistanceHistogram(points) {
     };
 }
 
+// Build derived statistics that every view (charts, maps, network) reads from for the currently filtered set
 function buildVisibleContext(place) {
     const visiblePoints = getVisibleUsPoints(place);
     const stateCounts = buildStateCountMap(visiblePoints);
@@ -1700,6 +1729,7 @@ function buildVisibleContext(place) {
 
     const topStates = sortCountEntries(stateCounts, "state");
     const topRegions = sortCountEntries(regionCounts, "region");
+    // Rank chart data: 1-indexed rank, count for each state, with the leader flagged for visual emphasis
     const rankPoints = topStates.map((entry, index) => ({
         rank: index + 1,
         value: entry.count,
@@ -1731,6 +1761,7 @@ function setupMapInteractions() {
 
         svg.addEventListener("wheel", (event) => {
             event.preventDefault();
+            // Convert the wheel event's screen coordinates into the SVG's viewbox space so zoom anchors at the cursor
             const point = buildSvgPoint(svg, event.clientX, event.clientY);
             const zoomFactor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
             zoomMapAt(mapType, state.mapViews[mapType].scale * zoomFactor, point.x, point.y);
@@ -1741,6 +1772,7 @@ function setupMapInteractions() {
                 return;
             }
 
+            // Only allow panning once the user has zoomed in; at scale 1 there is no slack to drag
             if ((state.mapViews[mapType]?.scale || 1) <= 1) {
                 return;
             }
@@ -1823,6 +1855,7 @@ function showTooltip(text, clientX, clientY) {
     elements.mapTooltip.textContent = text;
     elements.mapTooltip.hidden = false;
 
+    // Position the tooltip near the cursor but clamp to the viewport so it doesn't overflow
     const offset = 16;
     const maxX = window.innerWidth - elements.mapTooltip.offsetWidth - 12;
     const maxY = window.innerHeight - elements.mapTooltip.offsetHeight - 12;
