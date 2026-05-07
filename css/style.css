@@ -1654,9 +1654,6 @@ button {
     vector-effect: non-scaling-stroke;
 }
 
-.network-edge.is-primary {
-    /* animation removed — no dashed flow */
-}
 
 .network-edge--ribbon {
     opacity: 0.12;

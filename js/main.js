@@ -158,8 +158,8 @@ const VIEW_COPY = {
 // Shared UI state keeps the maps, chart, filters, and local inset synchronized.
 const state = {
     search: "",
-    selectedOrigin: "Germany",
-    selectedPlaceId: "berlin",
+    selectedOrigin: null,
+    selectedPlaceId: null,
     selectedView: "usa",
     selectedStat: "distance",
     activeEras: new Set(ERAS.map((era) => era.key)),
@@ -1313,8 +1313,15 @@ function normalizeSelection() {
         return false;
     }
 
+    // null means "not yet chosen" — valid guided state, not an error
+    if (state.selectedOrigin === null) {
+        return false;
+    }
+
     if (!DATA.origins[state.selectedOrigin]) {
-        state.selectedOrigin = originEntries[0][0];
+        state.selectedOrigin = null;
+        state.selectedPlaceId = null;
+        return false;
     }
 
     const candidate = getSelectedOrigin()?.places?.[0];
@@ -1323,8 +1330,14 @@ function normalizeSelection() {
         return false;
     }
 
+    // null place = origin chosen but name not yet picked — still guided state
+    if (state.selectedPlaceId === null) {
+        return false;
+    }
+
     if (!getSelectedOrigin().places.some((place) => place.id === state.selectedPlaceId)) {
-        state.selectedPlaceId = candidate.id;
+        state.selectedPlaceId = null;
+        return false;
     }
 
     return true;
@@ -1431,6 +1444,10 @@ function renderFeatureFilters() {
 }
 
 function renderEraLegend(place) {
+    if (!place) {
+        elements.eraLegend.innerHTML = `<div class="empty-state">Select a place name to see era filters.</div>`;
+        return;
+    }
     // Tally visible records per era so the legend can show live counts that respect the active filters
     const counts = place.usaPoints
         .filter((point) =>
@@ -2907,6 +2924,78 @@ function renderDetails(origin, place) {
         .join("");
 }
 
+function renderGuidedState(step) {
+    // step = "origin" | "place"
+    const clipId = "map-clip-usa-guide";
+
+    // Blank USA basemap — states drawn but no points, no routes
+    const statePolygons = Array.from(USA_STATE_SHAPES.values())
+        .map((shape) => {
+            const paths = (shape.paths || [shape]).map((p) =>
+                `<path class="us-state us-state--guide" d="${p.d || shape.d}"></path>`
+            ).join("");
+            return paths;
+        })
+        .join("");
+
+    const guideText = step === "origin"
+        ? "Choose a cultural origin from the Browse panel →"
+        : "Now choose a place name from the panel →";
+
+    const guideSubtext = step === "origin"
+        ? "Select England, Germany, Greece, or another origin to begin."
+        : "Pick a specific name to see its diffusion across the US.";
+
+    elements.vizStage.innerHTML = `
+        <div class="viz-layout viz-layout--usa">
+            <div class="viz-frame map-frame">
+                <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="Awaiting selection">
+                    <defs>
+                        <clipPath id="${clipId}">
+                            <rect x="20" y="20" width="960" height="520" rx="34"></rect>
+                        </clipPath>
+                    </defs>
+                    <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
+                    ${buildGrid(1000, 560, 84)}
+                    <g clip-path="url(#${clipId})">
+                        <g class="map-zoom-layer">
+                            <g class="map-state-layer">${statePolygons}</g>
+                        </g>
+                    </g>
+                    <text class="guided-prompt-title" x="500" y="244" text-anchor="middle">${guideText}</text>
+                    <text class="guided-prompt-sub" x="500" y="274" text-anchor="middle">${guideSubtext}</text>
+                </svg>
+            </div>
+        </div>
+    `;
+
+    // Update header copy
+    elements.viewKicker.textContent = step === "origin" ? "Step 1 of 2" : "Step 2 of 2";
+    elements.viewTitle.textContent = step === "origin" ? "Choose a Cultural Origin" : "Choose a Place Name";
+    elements.viewDescription.textContent = step === "origin"
+        ? "Select a cultural origin group from the Browse panel on the left to begin exploring name diffusion."
+        : "Select a specific place name from the Related Places list to load the diffusion map.";
+
+    // Stat / detail panels show placeholder copy
+    elements.statTitle.textContent = "Awaiting selection";
+    elements.statSummary.textContent = "Charts will appear once both a cultural origin and a place name are selected.";
+    elements.statChart.innerHTML = `<div class="empty-state guided-placeholder">Select an origin and a name to load charts.</div>`;
+    elements.detailCopy.textContent = "Snapshot metrics will appear once a place name is selected.";
+    elements.metricList.innerHTML = "";
+
+    if (step === "origin") {
+        elements.placeList.innerHTML = `<div class="empty-state guided-placeholder">Choose an origin above to see its place names.</div>`;
+    }
+
+    // Drive glow class onto the relevant panel buttons
+    document.querySelectorAll(".origin-button").forEach((btn) => {
+        btn.classList.toggle("is-guide-prompt", step === "origin");
+    });
+    document.querySelectorAll(".place-button").forEach((btn) => {
+        btn.classList.toggle("is-guide-prompt", step === "place");
+    });
+}
+
 function renderEmptyState() {
     elements.viewKicker.textContent = "Search state";
     elements.viewTitle.textContent = "No matching place names";
@@ -3156,6 +3245,20 @@ function renderApp() {
     syncFloatingPanels();
     elements.searchInput.value = state.search;
 
+    // Step 1: no origin selected yet
+    if (state.selectedOrigin === null) {
+        renderGuidedState("origin");
+        return;
+    }
+
+    // Step 2: origin chosen, but no place name selected yet
+    if (state.selectedPlaceId === null) {
+        renderPlaceList();
+        renderEraLegend(null);
+        renderGuidedState("place");
+        return;
+    }
+
     if (!valid) {
         renderEmptyState();
         return;
@@ -3169,6 +3272,8 @@ function renderApp() {
     }
 
     updateTheme(origin);
+    // Clear any lingering guided-state glows now that both selections are active
+    document.querySelectorAll(".is-guide-prompt").forEach((el) => el.classList.remove("is-guide-prompt"));
     renderPlaceList();
     renderEraLegend(place);
     renderStatChart(origin, place, buildVisibleContext(place));
@@ -3185,7 +3290,7 @@ function resetCurrentFocus() {
     state.activeEras = new Set(ERAS.map((era) => era.key));
     state.activeFeatures = new Set(FEATURE_OPTIONS.map((feature) => feature.key));
     state.focusedState = null;
-    state.selectedPlaceId = origin.places[0].id;
+    state.selectedPlaceId = null;
     state.selectedStat = VIEW_DEFAULT_STATS[state.selectedView];
     state.mapViews.global = { scale: 1, tx: 0, ty: 0 };
     state.mapViews.usa = { scale: 1, tx: 0, ty: 0 };
@@ -3280,7 +3385,7 @@ function handleClick(event) {
         }
 
         state.selectedOrigin = nextOrigin;
-        state.selectedPlaceId = DATA.origins[state.selectedOrigin].places[0].id;
+        state.selectedPlaceId = null;
         renderApp();
         return;
     }
