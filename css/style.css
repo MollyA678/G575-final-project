@@ -1850,14 +1850,12 @@ button {
 
 .local-network-node,
 .local-inset-node {
-    animation: networkNodeDrift var(--drift-duration, 12s) ease-in-out infinite alternate;
-    animation-delay: var(--drift-delay, 0s);
-    will-change: transform;
+    animation: none;
 }
 
 .local-network-node.is-selected,
 .local-inset-node.is-selected {
-    animation-duration: calc(var(--drift-duration, 12s) * 0.88);
+    animation: none;
 }
 
 .local-inset-node.is-clickable {

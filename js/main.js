@@ -122,9 +122,9 @@ const STAT_OPTIONS = {
             `${place.totalRecords} GNIS populated-place records, accumulated using a statehood-year proxy rather than a literal naming date for the ${origin.name} sample.`
     },
     distance: {
-        title: (place) => `${place.name} distance from entry corridor`,
+        title: (place) => `${place.name} distance from anchor record`,
         summary: (origin, place) =>
-            `Distances are measured from ${origin.entryHub.label}. The chart shows a direct kilometer distribution for visible GNIS records rather than grouped proxy-era bands.`
+            `Distances are measured from the selected anchor record, ${place.anchorRecord.label}. The chart shows a direct kilometer distribution for visible GNIS records rather than grouped proxy-era bands.`
     },
     rank: {
         title: (place) => `${place.name} state rank by repeated occurrence`,
@@ -148,10 +148,10 @@ const VIEW_COPY = {
             "Every point in this view is an exact GNIS populated-place record from the contiguous U.S. subset, filtered by region and a proxy era band."
     },
     local: {
-        kicker: "Local network view",
-        title: (origin, place) => `${place.name} in relational space`,
+        kicker: "Local spread view",
+        title: (origin, place) => `${place.name} state spread`,
         description: (origin) =>
-            `This schematic network links one selected name to sibling names and to state-level distance relationships inside the ${origin.name} group.`
+            `This diagram keeps ${origin.name} as the contextual origin group, then spreads state nodes by their average distance from the selected anchor record. Node size shows visible record count.`
     }
 };
 
@@ -293,6 +293,19 @@ function colorWithAlpha(color, alpha) {
     }
 
     return hexToRgba(color, alpha);
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+    const radius = 6371;
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(deltaPhi / 2) ** 2 +
+        Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+
+    return 2 * radius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function mixColors(colorA, colorB, t, alpha = 1) {
@@ -564,12 +577,7 @@ function describeTrailSegment(geometry, descriptor) {
 
 // Expose the per-node drift parameters as CSS custom properties so the keyframe animation can read them per element.
 function getOrganicMotionStyle(node) {
-    return [
-        `--drift-x:${(node.driftX || 0).toFixed(1)}px`,
-        `--drift-y:${(node.driftY || 0).toFixed(1)}px`,
-        `--drift-duration:${(node.driftDuration || 12).toFixed(2)}s`,
-        `--drift-delay:${(node.driftDelay || 0).toFixed(2)}s`
-    ].join(";");
+    return "";
 }
 
 function getNetworkLabelLayout(node, context = "main") {
@@ -687,6 +695,81 @@ function getTopState(place) {
 
 function countUniqueStates(place) {
     return new Set(place.records.map((record) => record.state)).size;
+}
+
+function inferDistanceBand(distanceKm) {
+    if (distanceKm < 900) {
+        return "short";
+    }
+    if (distanceKm < 1800) {
+        return "medium";
+    }
+    return "long";
+}
+
+function getReferenceDistanceKm(point) {
+    return point.referenceDistanceKm ?? point.distanceKm ?? 0;
+}
+
+function getReferenceAnchorRecord(place) {
+    return place.anchorRecord;
+}
+
+function buildReferenceVisiblePoints(place, points) {
+    const anchorRecord = getReferenceAnchorRecord(place);
+
+    if (!anchorRecord) {
+        return points.map((point) => ({
+            ...point,
+            isAnchorRecord: false,
+            referenceDistanceKm: point.distanceKm || 0,
+            referenceDistanceBand: point.distanceBand || inferDistanceBand(point.distanceKm || 0)
+        }));
+    }
+
+    return points.map((point) => {
+        const referenceDistanceKm = point.id === anchorRecord.id
+            ? 0
+            : haversineKm(anchorRecord.lat, anchorRecord.lon, point.lat, point.lon);
+
+        return {
+            ...point,
+            isAnchorRecord: point.id === anchorRecord.id,
+            referenceDistanceKm: Math.round(referenceDistanceKm * 10) / 10,
+            referenceDistanceBand: inferDistanceBand(referenceDistanceKm)
+        };
+    });
+}
+
+function buildSourceNoteContext(place, visiblePoints) {
+    const anchorRecord = getReferenceAnchorRecord(place);
+
+    if (state.focusedState) {
+        const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
+        const focusedRecord = focusedRecords.find((point) => point.detailNote) || focusedRecords[0] || anchorRecord;
+
+        if (focusedRecord) {
+            return {
+                kicker: "Focused State Note",
+                headline: focusedRecord.label,
+                note: focusedRecord.detailNote || `GNIS does not include a description/history note for ${focusedRecord.label}.`
+            };
+        }
+    }
+
+    if (anchorRecord) {
+        return {
+            kicker: "Anchor Note",
+            headline: anchorRecord.label,
+            note: anchorRecord.detailNote || `GNIS does not include a description/history note for ${anchorRecord.label}.`
+        };
+    }
+
+    return {
+        kicker: "Source Note",
+        headline: place.label,
+        note: `GNIS does not include a description/history note for the selected reference record for ${place.name}.`
+    };
 }
 
 function getPanZoomViewbox(viewType) {
@@ -1512,7 +1595,7 @@ function renderDistanceChart(place, visibleContext) {
                 })
                 .join("")}
             <text class="axis-label chart-axis-strong" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 4}" text-anchor="end">Distance from entry corridor (km)</text>
+            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 4}" text-anchor="end">Distance from anchor record (km)</text>
             <text class="chart-note" x="${width - padding.right}" y="22" text-anchor="end">Mean ${Math.round(meanDistanceKm || 0)} km</text>
             ${
                 !bins.length
@@ -1627,9 +1710,9 @@ function buildStateDistanceMap(points) {
         };
 
         entry.count += 1;
-        entry.totalDistanceKm += point.distanceKm || 0;
-        entry.minDistanceKm = Math.min(entry.minDistanceKm, point.distanceKm || 0);
-        entry.maxDistanceKm = Math.max(entry.maxDistanceKm, point.distanceKm || 0);
+        entry.totalDistanceKm += getReferenceDistanceKm(point);
+        entry.minDistanceKm = Math.min(entry.minDistanceKm, getReferenceDistanceKm(point));
+        entry.maxDistanceKm = Math.max(entry.maxDistanceKm, getReferenceDistanceKm(point));
         entry.region = point.region;
         memo.set(point.state, entry);
         return memo;
@@ -1687,8 +1770,8 @@ function buildDistanceHistogram(points) {
         };
     }
 
-    const maxDistanceKm = Math.max(...points.map((point) => point.distanceKm || 0), 0);
-    const meanDistanceKm = points.reduce((sum, point) => sum + (point.distanceKm || 0), 0) / points.length;
+    const maxDistanceKm = Math.max(...points.map((point) => getReferenceDistanceKm(point)), 0);
+    const meanDistanceKm = points.reduce((sum, point) => sum + getReferenceDistanceKm(point), 0) / points.length;
     const stepKm = getNiceDistanceStep(maxDistanceKm || 1);
     const binCount = Math.max(1, Math.ceil((maxDistanceKm || stepKm) / stepKm));
     const bins = Array.from({ length: binCount }, (_, index) => ({
@@ -1699,7 +1782,7 @@ function buildDistanceHistogram(points) {
 
     // Histogram bins are built from the currently visible records only, so filters and chart always agree.
     points.forEach((point) => {
-        const distanceKm = point.distanceKm || 0;
+        const distanceKm = getReferenceDistanceKm(point);
         const binIndex = Math.min(Math.floor(distanceKm / stepKm), bins.length - 1);
         bins[binIndex].count += 1;
     });
@@ -1714,7 +1797,7 @@ function buildDistanceHistogram(points) {
 
 // Build derived statistics that every view (charts, maps, network) reads from for the currently filtered set
 function buildVisibleContext(place) {
-    const visiblePoints = getVisibleUsPoints(place);
+    const visiblePoints = buildReferenceVisiblePoints(place, getVisibleUsPoints(place));
     const stateCounts = buildStateCountMap(visiblePoints);
     const regionCounts = buildRegionCountMap(visiblePoints);
     const distanceStateEntries = buildDistanceStateEntries(visiblePoints);
@@ -1722,8 +1805,8 @@ function buildVisibleContext(place) {
     const distanceBars = buildDistanceBars(visiblePoints);
 
     visiblePoints.forEach((point) => {
-        if (distanceBars[point.distanceBand]?.[point.era] !== undefined) {
-            distanceBars[point.distanceBand][point.era] += 1;
+        if (distanceBars[point.referenceDistanceBand]?.[point.era] !== undefined) {
+            distanceBars[point.referenceDistanceBand][point.era] += 1;
         }
     });
 
@@ -1746,7 +1829,8 @@ function buildVisibleContext(place) {
         distanceStateEntries,
         distanceHistogram,
         distanceBars,
-        rankPoints
+        rankPoints,
+        sourceNote: buildSourceNoteContext(place, visiblePoints)
     };
 }
 
@@ -2068,27 +2152,31 @@ function renderGlobalView(origin, place) {
 
 function renderUsaView(origin, place) {
     const visibleContext = buildVisibleContext(place);
+    const anchorRecord = getReferenceAnchorRecord(place);
     const hub = {
-        x: origin.entryHub.x,
-        y: origin.entryHub.y
+        x: anchorRecord.x,
+        y: anchorRecord.y
     };
     const { visiblePoints, stateCounts } = visibleContext;
     const activeStates = new Set(visiblePoints.map((point) => point.state));
     const clipId = "map-clip-usa-main";
-    const maxDistanceKm = Math.max(1, ...visiblePoints.map((point) => point.distanceKm || 0));
+    const maxDistanceKm = Math.max(1, ...visiblePoints.map((point) => getReferenceDistanceKm(point)));
     const getDistanceColor = (distanceKm) =>
         mixColors("#63ebff", "#ff4fb8", (distanceKm || 0) / maxDistanceKm, 0.96);
 
     const routes = visiblePoints
         .map((point) => {
+            if (point.isAnchorRecord) {
+                return "";
+            }
             const target = { x: point.x, y: point.y };
-            const distanceColor = getDistanceColor(point.distanceKm);
+            const distanceColor = getDistanceColor(getReferenceDistanceKm(point));
             return renderOverlayTechTrail("usa", hub, target, 74, {
                 seedKey: `usa:${point.id}`,
                 color: distanceColor,
                 glowColor: colorWithAlpha(distanceColor, 0.22),
                 ribbonColor: colorWithAlpha(distanceColor, 0.08),
-                tooltip: `${point.label} diffusion route`,
+                tooltip: `${anchorRecord.label} to ${point.label}`,
                 linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
                 focusEntries: [["focus-route", point.id]],
                 primary: false,
@@ -2100,14 +2188,14 @@ function renderUsaView(origin, place) {
     const points = visiblePoints
         .map((point) =>
             renderOverlayBeaconPoint("usa", point.x, point.y, {
-                className: "overlay-beacon-point--usa",
-                height: 12,
-                width: 2.8,
-                lean: -0.05,
-                ringRadius: 1.38,
-                coreRadius: 0.72,
-                color: getDistanceColor(point.distanceKm),
-                tooltip: point.tooltip,
+                className: `overlay-beacon-point--usa ${point.isAnchorRecord ? "overlay-beacon-point--anchor" : ""}`,
+                height: point.isAnchorRecord ? 15 : 12,
+                width: point.isAnchorRecord ? 3.8 : 2.8,
+                lean: point.isAnchorRecord ? 0.02 : -0.05,
+                ringRadius: point.isAnchorRecord ? 1.7 : 1.38,
+                coreRadius: point.isAnchorRecord ? 0.92 : 0.72,
+                color: point.isAnchorRecord ? "rgba(246,251,255,0.98)" : getDistanceColor(getReferenceDistanceKm(point)),
+                tooltip: point.isAnchorRecord ? `${anchorRecord.label} · selected anchor record` : point.tooltip,
                 linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
                 focusEntries: [["focus-point", point.id]]
             })
@@ -2131,19 +2219,7 @@ function renderUsaView(origin, place) {
                             ${renderUsaPolygons(activeStates, stateCounts, { mapType: "usa" })}
                         </g>
                         <g class="map-overlay-layer" data-map-overlay-layer="usa">
-                            ${renderOverlayBeaconPoint("usa", hub.x, hub.y, {
-                                className: "overlay-beacon-point--hub",
-                                height: 16,
-                                width: 4,
-                                lean: 0.02,
-                                ringRadius: 1.7,
-                                coreRadius: 0.9,
-                                color: "rgba(246,251,255,0.98)",
-                                tooltip: origin.entryHub.label,
-                                linkEntries: [["origin", origin.id]],
-                                focusEntries: [["focus-origin", origin.id]]
-                            })}
-                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 8, hub.y - 14)} text-anchor="end" data-tooltip="${escapeAttr(origin.entryHub.label)}" ${renderLinkKeysAttr([["origin", origin.id]])} ${renderFocusKeysAttr([["focus-origin", origin.id]])}>${origin.entryHub.label}</text>
+                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 8, hub.y - 14)} text-anchor="end" data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}" ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}>${anchorRecord.label}</text>
                             ${routes}
                             ${points}
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("usa", 118, 116)}>Pacific</text>
@@ -2163,8 +2239,7 @@ function renderUsaView(origin, place) {
                 <article class="annotation-card">
                     <p class="annotation-card__eyebrow">How To Read This</p>
                     <p>
-                        The hub is a hand-picked entry corridor for the selected origin group. Each visible dot is a real GNIS record,
-                        and the curved routes are a symbolic diffusion layer drawn from that corridor to each occurrence. Cooler tones are nearer to the corridor and warmer tones are farther away.
+                        The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor.
                     </p>
                 </article>
                 <article class="annotation-card">
@@ -2206,62 +2281,18 @@ function buildLocalNetwork(origin, place) {
         size: Math.min(26 + place.totalRecords / 6, 38),
         color: origin.accent,
         label: place.name,
-        detail: `${place.totalRecords} GNIS records`,
+        detail: `${place.anchorRecord.label} anchor`,
         selected: true,
         tooltip: "",
         linkEntries: [["place", place.id], ["origin", origin.id]],
-        focusEntries: [["focus-selected-place", place.id]],
-        driftX: seededRange(`${seedRoot}:selected-drift`, -6, 6, 1),
-        driftY: seededRange(`${seedRoot}:selected-drift`, -7, 7, 2),
-        driftDuration: seededRange(`${seedRoot}:selected-drift`, 10.5, 15.5, 3),
-        driftDelay: seededRange(`${seedRoot}:selected-drift`, -6, 0, 4)
+        focusEntries: [["focus-selected-place", place.id]]
     };
-
-    const siblings = origin.places.filter((candidate) => candidate.id !== place.id);
-    const siblingCount = Math.max(siblings.length, 1);
-    const siblingNodes = siblings.map((candidate, index) => {
-        const placement = buildOrganicArcPlacement(
-            `${seedRoot}:sibling:${candidate.id}`,
-            index,
-            siblingCount,
-            {
-                cx: selectedNode.x,
-                cy: selectedNode.y + 2,
-                angleStart: 198,
-                angleEnd: 322,
-                angleJitter: 9,
-                radiusMin: 244,
-                radiusMax: 312,
-                driftX: 8,
-                driftY: 10,
-                durationMin: 11,
-                durationMax: 18,
-                delayMin: -8,
-                delayMax: 0
-            }
-        );
-
-        return {
-            id: `sibling-${candidate.id}`,
-            kind: "sibling",
-            ...placement,
-            size: Math.min(16 + candidate.totalRecords / 8, 28),
-            color: origin.accent,
-            label: candidate.name,
-            detail: `${candidate.totalRecords} records`,
-            group: "sibling",
-            placeId: candidate.id,
-            tooltip: "",
-            linkEntries: [["place", candidate.id], ["origin", origin.id]],
-            focusEntries: [["focus-sibling-place", candidate.id]]
-        };
-    });
 
     const maxDistanceKm = Math.max(
         1,
         ...visibleContext.distanceStateEntries.map((entry) => entry.avgDistanceKm || 0)
     );
-    // Local state nodes are ordered by mean corridor distance instead of grouped into regional clusters.
+    // Local state nodes are ordered by mean anchor distance instead of grouped into regional clusters.
     const stateNodes = visibleContext.distanceStateEntries.map((entry, index) => {
         const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
         const placement = buildDistancePlacement(
@@ -2309,7 +2340,6 @@ function buildLocalNetwork(origin, place) {
     const nodes = [
         originNode,
         selectedNode,
-        ...siblingNodes,
         ...stateNodes
     ];
     const edges = [];
@@ -2323,15 +2353,6 @@ function buildLocalNetwork(origin, place) {
         linkEntries: [["origin", origin.id], ["place", place.id]],
         focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
     });
-    siblingNodes.forEach((node) => edges.push({
-        id: `selected-${node.id}`,
-        from: "selected",
-        to: node.id,
-        primary: true,
-        tooltip: "",
-        linkEntries: node.linkEntries,
-        focusEntries: [["focus-edge", `selected-sibling:${node.placeId}`]]
-    }));
     stateNodes.forEach((node) => edges.push({
         id: `selected-${node.id}`,
         from: "selected",
@@ -2346,13 +2367,9 @@ function buildLocalNetwork(origin, place) {
 }
 
 function buildInsetLocalNetwork(origin, place) {
-    // The inset uses the same relational logic as the full local view, but trims siblings for legibility.
+    // The inset mirrors the full local view in a smaller frame so the same state pattern stays readable.
     const visibleContext = buildVisibleContext(place);
     const seedRoot = `${origin.id}:${place.id}:inset`;
-    const siblingPlaces = origin.places
-        .filter((candidate) => candidate.id !== place.id)
-        .sort((placeA, placeB) => placeB.totalRecords - placeA.totalRecords)
-        .slice(0, 3);
 
     const originNode = {
         id: "origin",
@@ -2380,52 +2397,11 @@ function buildInsetLocalNetwork(origin, place) {
         size: 22,
         color: origin.accent,
         label: place.name,
-        detail: `${visibleContext.visiblePoints.length} visible`,
+        detail: `${place.anchorRecord.state} anchor`,
         tooltip: "",
         linkEntries: [["place", place.id], ["origin", origin.id]],
-        focusEntries: [["focus-selected-place", place.id]],
-        driftX: seededRange(`${seedRoot}:selected-drift`, -4, 4, 1),
-        driftY: seededRange(`${seedRoot}:selected-drift`, -4, 4, 2),
-        driftDuration: seededRange(`${seedRoot}:selected-drift`, 9, 13, 3),
-        driftDelay: seededRange(`${seedRoot}:selected-drift`, -5, 0, 4)
+        focusEntries: [["focus-selected-place", place.id]]
     };
-
-    const siblingNodes = siblingPlaces.map((candidate, index) => {
-        const placement = buildOrganicArcPlacement(
-            `${seedRoot}:sibling:${candidate.id}`,
-            index,
-            Math.max(siblingPlaces.length, 1),
-            {
-                cx: selectedNode.x,
-                cy: selectedNode.y + 2,
-                angleStart: 196,
-                angleEnd: 300,
-                angleJitter: 8,
-                radiusMin: 126,
-                radiusMax: 158,
-                driftX: 4,
-                driftY: 4,
-                durationMin: 8.5,
-                durationMax: 12.5,
-                delayMin: -5,
-                delayMax: 0
-            }
-        );
-
-        return {
-            id: `sibling-${candidate.id}`,
-            kind: "sibling",
-            ...placement,
-            size: 14 + Math.min(candidate.totalRecords / 12, 6),
-            color: origin.accent,
-            label: candidate.name,
-            detail: `${candidate.totalRecords} records`,
-            tooltip: "",
-            placeId: candidate.id,
-            linkEntries: [["place", candidate.id], ["origin", origin.id]],
-            focusEntries: [["focus-sibling-place", candidate.id]]
-        };
-    });
 
     const maxDistanceKm = Math.max(
         1,
@@ -2476,7 +2452,6 @@ function buildInsetLocalNetwork(origin, place) {
     const nodes = [
         originNode,
         selectedNode,
-        ...siblingNodes,
         ...stateNodes
     ];
     const edges = [
@@ -2489,15 +2464,6 @@ function buildInsetLocalNetwork(origin, place) {
             linkEntries: [["origin", origin.id], ["place", place.id]],
             focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
         },
-        ...siblingNodes.map((node) => ({
-            id: `selected-${node.id}`,
-            from: "selected",
-            to: node.id,
-            primary: true,
-            tooltip: "",
-            linkEntries: node.linkEntries,
-            focusEntries: [["focus-edge", `selected-sibling:${node.placeId}`]]
-        })),
         ...stateNodes.map((node) => ({
             id: `selected-${node.id}`,
             from: "selected",
@@ -2744,7 +2710,7 @@ function renderLocalInset(origin, place, contextLabel) {
             <div class="local-inset-card__toolbar" data-local-inset-drag="${contextLabel}">
                 <div class="local-inset-card__toolbar-copy">
                     <p class="annotation-card__eyebrow">Local Inset</p>
-                    <h3>${place.name} distance field</h3>
+                    <h3>${place.name} state spread</h3>
                     <span class="local-inset-card__collapsed-label">Local</span>
                 </div>
 
@@ -2791,9 +2757,10 @@ function renderMiniMap(origin, place) {
     // The mini map gives the local view a geographic companion without leaving the distance-first network layout.
     const visibleContext = buildVisibleContext(place);
     const { visiblePoints, stateCounts } = visibleContext;
+    const anchorRecord = getReferenceAnchorRecord(place);
     const hub = {
-        x: origin.entryHub.x,
-        y: origin.entryHub.y
+        x: anchorRecord.x,
+        y: anchorRecord.y
     };
     const activeStates = new Set(visiblePoints.map((point) => point.state));
 
@@ -2804,14 +2771,17 @@ function renderMiniMap(origin, place) {
             ${renderUsaPolygons(activeStates, stateCounts, { showLabels: false, detailLevel: "medium" })}
             ${visiblePoints
                 .map((point) => {
+                    if (point.isAnchorRecord) {
+                        return "";
+                    }
                     const target = { x: point.x, y: point.y };
-                    return `<path class="route" d="${curvedPath(hub, target, 36)}" stroke="${ERAS.find((era) => era.key === point.era).color}" data-tooltip="${escapeAttr(`${point.label} diffusion route`)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-route", point.id]])}></path>`;
+                    return `<path class="route" d="${curvedPath(hub, target, 36)}" stroke="${ERAS.find((era) => era.key === point.era).color}" data-tooltip="${escapeAttr(`${anchorRecord.label} to ${point.label}`)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-route", point.id]])}></path>`;
                 })
                 .join("")}
-            <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="8" data-tooltip="${escapeAttr(origin.entryHub.label)}" ${renderLinkKeysAttr([["origin", origin.id]])} ${renderFocusKeysAttr([["focus-origin", origin.id]])}></circle>
+            <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="8" data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}" ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}></circle>
             ${visiblePoints
                 .map((point) => `
-                    <circle class="dot-point" cx="${point.x}" cy="${point.y}" r="4" fill="${REGION_COLORS[point.region] || origin.accent}" data-tooltip="${escapeAttr(point.tooltip)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", point.id]])}></circle>
+                    <circle class="dot-point" cx="${point.x}" cy="${point.y}" r="${point.isAnchorRecord ? 5.5 : 4}" fill="${point.isAnchorRecord ? "#f6fbff" : (REGION_COLORS[point.region] || origin.accent)}" data-tooltip="${escapeAttr(point.isAnchorRecord ? `${anchorRecord.label} · selected anchor record` : point.tooltip)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", point.id]])}></circle>
                 `)
                 .join("")}
             ${
@@ -2826,6 +2796,7 @@ function renderMiniMap(origin, place) {
 function renderLocalView(origin, place) {
     // Local view pairs the relationship network with supporting geographic context and interpretation notes.
     const network = buildLocalNetwork(origin, place);
+    const visibleContext = buildVisibleContext(place);
     const nodeLookup = new Map(network.nodes.map((node) => [node.id, node]));
     const panZoomType = "local-main";
     const clipId = "local-main-clip";
@@ -2840,9 +2811,9 @@ function renderLocalView(origin, place) {
                         ${renderMiniMap(origin, place)}
                     </article>
                     <article class="annotation-card">
-                        <p class="annotation-card__eyebrow">Source Note</p>
-                        <h3>${place.label}</h3>
-                        <p>${place.note}</p>
+                        <p class="annotation-card__eyebrow">${visibleContext.sourceNote.kicker}</p>
+                        <h3>${visibleContext.sourceNote.headline}</h3>
+                        <p>${visibleContext.sourceNote.note}</p>
                     </article>
                 </div>
 
@@ -2863,7 +2834,7 @@ function renderLocalView(origin, place) {
                                     ${network.nodes.map((node) => renderLocalNetworkNode(node)).join("")}
                                 </g>
                             </g>
-                            <text class="chart-note" x="48" y="540">Top: origin anchor. Left: sibling names. State nodes spread outward by average corridor distance, and each label shows mean kilometers plus visible count.</text>
+                            <text class="chart-note" x="48" y="540">Top: origin group. Center: selected name anchored to ${place.anchorRecord.label}. Outer state nodes spread by average anchor distance, and each label shows mean kilometers plus visible count.</text>
                             ${
                                 !network.visibleCount
                                     ? `<text class="chart-note" x="500" y="500" text-anchor="middle">Current filters remove all visible state links for this name.</text>`
@@ -2875,15 +2846,15 @@ function renderLocalView(origin, place) {
                     <div class="community-legend">
                         <span class="community-chip" style="--chip-color:#63ebff">
                             <span class="community-chip__dot"></span>
-                            <span>nearer corridor states</span>
+                            <span>nearer-to-anchor states</span>
                         </span>
                         <span class="community-chip" style="--chip-color:#ff4fb8">
                             <span class="community-chip__dot"></span>
-                            <span>farther corridor states</span>
+                            <span>farther-from-anchor states</span>
                         </span>
                         <span class="community-chip community-chip--wide" style="--chip-color:rgba(244,250,255,0.92)">
                             <span class="community-chip__dot"></span>
-                            <span>label = avg km · visible count</span>
+                            <span>one edge = one state with visible records</span>
                         </span>
                     </div>
                 </div>
@@ -2923,7 +2894,7 @@ function renderDetails(origin, place) {
     const anchor = place.anchorRecord;
 
     elements.detailCopy.textContent =
-        `${place.note} ${DATA.meta.sourceNote} ${DATA.meta.timeProxyNote}`;
+        `${visibleContext.sourceNote.note} ${DATA.meta.sourceNote} ${DATA.meta.timeProxyNote}`;
 
     const metrics = [
         ["Origin group", origin.name],
@@ -2932,7 +2903,8 @@ function renderDetails(origin, place) {
         ["States covered", countUniqueStates(place)],
         ["Focused state", state.focusedState || "All visible states"],
         ["Top state", topState ? `${topState.state} (${topState.count})` : "N/A"],
-        ["Anchor record", `${anchor.state}${anchor.county ? `, ${anchor.county} County` : ""}`],
+        ["Anchor record", anchor.label],
+        ["Anchor county", `${anchor.state}${anchor.county ? `, ${anchor.county} County` : ""}`],
         ["Visible after filters", visibleContext.visiblePoints.length]
     ];
 
