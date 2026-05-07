@@ -50,7 +50,7 @@ window.placeDiffusionData = {
           "label": "Kingston, New York",
           "type": "GNIS populated places",
           "summary": "Kingston appears in 44 GNIS populated-place records across 33 contiguous U.S. states in this prototype subset.",
-          "note": "Darrancetown surrendered its borough charter & became part of Kingston around 1920s.",
+          "note": "Named after Kingston upon Thames or Kingston upon Hull in England. The name, meaning 'king's town' in Old English, was widely adopted by English colonists, particularly in the Northeast and Mid-Atlantic during the 17th and 18th centuries.",
           "totalRecords": 44,
           "regionCounts": {
             "northeast": 8,
@@ -2532,7 +2532,7 @@ window.placeDiffusionData = {
           "label": "Oxford, Mississippi",
           "type": "GNIS populated places",
           "summary": "Oxford appears in 35 GNIS populated-place records across 30 contiguous U.S. states in this prototype subset.",
-          "note": "On the left bank of the Acushnet River 1.2 mi N of Fairhaven T.H.; Town of Fairhaven.",
+          "note": "Named after Oxford, England, home of the University of Oxford. The name was adopted broadly across the eastern United States during the late 18th and early 19th centuries, often by communities with aspirations toward learning or civic prestige.",
           "totalRecords": 35,
           "regionCounts": {
             "northeast": 8,
@@ -4551,7 +4551,7 @@ window.placeDiffusionData = {
           "label": "Windsor, Connecticut",
           "type": "GNIS populated places",
           "summary": "Windsor appears in 28 GNIS populated-place records across 23 contiguous U.S. states in this prototype subset.",
-          "note": "On State Route 9, 4 mi SW of Savoy; Town of Windsor.",
+          "note": "Named after Windsor, England, site of Windsor Castle and the English royal family's ancestral seat. The name spread widely in New England and then inland as a marker of English cultural loyalty.",
           "totalRecords": 28,
           "regionCounts": {
             "northeast": 7,
@@ -6175,7 +6175,7 @@ window.placeDiffusionData = {
           "label": "Bristol, Tennessee",
           "type": "GNIS populated places",
           "summary": "Bristol appears in 29 GNIS populated-place records across 27 contiguous U.S. states in this prototype subset.",
-          "note": "Name changed 1840",
+          "note": "Named after Bristol, England, a major Atlantic port city. The name carried strong commercial and maritime associations and was adopted frequently in coastal and river-trade communities across the eastern U.S.",
           "totalRecords": 29,
           "regionCounts": {
             "northeast": 7,
@@ -7905,7 +7905,7 @@ window.placeDiffusionData = {
           "label": "Berlin, Wisconsin",
           "type": "GNIS populated places",
           "summary": "Berlin appears in 28 GNIS populated-place records across 26 contiguous U.S. states in this prototype subset.",
-          "note": "Named for the capital city of Germany.",
+          "note": "Named after Berlin, Germany. The name arrived in the U.S. with early German settlers, particularly in Pennsylvania and the Midwest, and spread during the 19th-century waves of German immigration.",
           "totalRecords": 28,
           "regionCounts": {
             "northeast": 6,
@@ -9552,7 +9552,7 @@ window.placeDiffusionData = {
           "label": "Hanover, Pennsylvania",
           "type": "GNIS populated places",
           "summary": "Hanover appears in 30 GNIS populated-place records across 25 contiguous U.S. states in this prototype subset.",
-          "note": "3 mi N of Pembroke; Town of Hanover.",
+          "note": "Named after Hannover, Germany (historically Hanover). The name has strong dynastic ties — the British royal House of Hanover — and was adopted both by German immigrant communities and by towns with English-loyalist naming traditions.",
           "totalRecords": 30,
           "regionCounts": {
             "northeast": 9,
@@ -11286,7 +11286,7 @@ window.placeDiffusionData = {
           "label": "Dresden, Ohio",
           "type": "GNIS populated places",
           "summary": "Dresden appears in 11 GNIS populated-place records across 10 contiguous U.S. states in this prototype subset.",
-          "note": "Current name adopted in 1852.",
+          "note": "Named after Dresden, Germany, a major cultural and artistic center on the Elbe River. U.S. places bearing the name were largely settled or named by German immigrants during the 19th century.",
           "totalRecords": 11,
           "regionCounts": {
             "northeast": 2,
@@ -12000,7 +12000,7 @@ window.placeDiffusionData = {
           "label": "Hamburg, New York",
           "type": "GNIS populated places",
           "summary": "Hamburg appears in 29 GNIS populated-place records across 22 contiguous U.S. states in this prototype subset.",
-          "note": "Incorporated in 1874. Named for the city in Germany.",
+          "note": "Named after Hamburg, Germany, one of Europe's great port cities. German immigrant communities carried the name westward through the Midwest from the mid-19th century onward.",
           "totalRecords": 29,
           "regionCounts": {
             "northeast": 5,
@@ -13697,7 +13697,7 @@ window.placeDiffusionData = {
           "label": "Athens, Georgia",
           "type": "GNIS populated places",
           "summary": "Athens appears in 24 GNIS populated-place records across 23 contiguous U.S. states in this prototype subset.",
-          "note": "Founded in 1783. Incorporated in 1831.",
+          "note": "Named after Athens, Greece, the ancient seat of democracy and Western learning. The name was a popular choice during the classical revival of the late 18th and early 19th centuries, especially for college towns and county seats.",
           "totalRecords": 24,
           "regionCounts": {
             "northeast": 4,
@@ -15149,7 +15149,7 @@ window.placeDiffusionData = {
           "label": "Sparta, Georgia",
           "type": "GNIS populated places",
           "summary": "Sparta appears in 20 GNIS populated-place records across 19 contiguous U.S. states in this prototype subset.",
-          "note": "Incorporated in 1897.",
+          "note": "Named after Sparta, the ancient Greek city-state celebrated for military discipline. The name was fashionable during the classical revival period and appears across the South and Midwest.",
           "totalRecords": 20,
           "regionCounts": {
             "northeast": 3,
@@ -16369,7 +16369,7 @@ window.placeDiffusionData = {
           "label": "Corinth, Mississippi",
           "type": "GNIS populated places",
           "summary": "Corinth appears in 40 GNIS populated-place records across 20 contiguous U.S. states in this prototype subset.",
-          "note": "Founded in 1853.",
+          "note": "Named after Corinth, the ancient Greek city on the isthmus connecting mainland Greece and the Peloponnese. U.S. communities bearing the name are concentrated in the South and were largely named during the antebellum period.",
           "totalRecords": 40,
           "regionCounts": {
             "northeast": 1,
@@ -18554,7 +18554,7 @@ window.placeDiffusionData = {
           "label": "Troy, Alabama",
           "type": "GNIS populated places",
           "summary": "Troy appears in 35 GNIS populated-place records across 32 contiguous U.S. states in this prototype subset.",
-          "note": "Current name adopted on 5 January 1789.",
+          "note": "Named after Troy (Ilium), the ancient city made famous by Homer's Iliad. The name was widely adopted during the classical revival era of the early American republic, particularly in New York and the South.",
           "totalRecords": 35,
           "regionCounts": {
             "northeast": 7,
@@ -20629,7 +20629,7 @@ window.placeDiffusionData = {
           "label": "Santa Fe, New Mexico",
           "type": "GNIS populated places",
           "summary": "Santa Fe appears in 10 GNIS populated-place records across 9 contiguous U.S. states in this prototype subset.",
-          "note": "6.4 km (4 mi) NW of Hitchcook.  (US-T121) Includes the former communities of Arcadia and Alta Loma which incorporated on June 30, 1978.  (US-T121)",
+          "note": "From the Spanish 'ciudad de la Santa Fe de San Francisco de Asís,' meaning 'city of Holy Faith.' The oldest of the Spanish-derived place names in the U.S., rooted in the Spanish colonial period of the Southwest.",
           "totalRecords": 10,
           "regionCounts": {
             "south": 5,
@@ -21286,7 +21286,7 @@ window.placeDiffusionData = {
           "label": "Toledo, Ohio",
           "type": "GNIS populated places",
           "summary": "Toledo appears in 12 GNIS populated-place records across 11 contiguous U.S. states in this prototype subset.",
-          "note": "Ranked 40th by population in the 1980 census",
+          "note": "Named after Toledo, Spain, a historic city on the Tagus River and former capital of Castile. U.S. adoptions occurred primarily through secondary naming chains — many places are named after Toledo, Ohio, rather than directly after the Spanish city.",
           "totalRecords": 12,
           "regionCounts": {
             "south": 4,
@@ -22061,7 +22061,7 @@ window.placeDiffusionData = {
           "label": "Madrid, Iowa",
           "type": "GNIS populated places",
           "summary": "Madrid appears in 9 GNIS populated-place records across 9 contiguous U.S. states in this prototype subset.",
-          "note": "Incorporated in 1883.",
+          "note": "Named after Madrid, Spain, the capital and largest city of Spain. U.S. occurrences are scattered and date mainly to the 19th century, often reflecting Spanish cultural interest rather than direct immigrant settlement.",
           "totalRecords": 9,
           "regionCounts": {
             "northeast": 2,
@@ -22671,7 +22671,7 @@ window.placeDiffusionData = {
           "label": "Valencia, California",
           "type": "GNIS populated places",
           "summary": "Valencia appears in 7 GNIS populated-place records across 6 contiguous U.S. states in this prototype subset.",
-          "note": "Muscupiabe Grant",
+          "note": "Named after Valencia, Spain, a major Mediterranean coastal city. The name appears in the U.S. primarily in the Southwest and California, reflecting the region's Spanish colonial heritage.",
           "totalRecords": 7,
           "regionCounts": {
             "northeast": 1,
@@ -23179,7 +23179,7 @@ window.placeDiffusionData = {
           "label": "Sonora, Texas",
           "type": "GNIS populated places",
           "summary": "Sonora appears in 10 GNIS populated-place records across 10 contiguous U.S. states in this prototype subset.",
-          "note": "Located along the Missouri River, 3.2 km (2 mi) W of Watson.",
+          "note": "Named after the Mexican state of Sonora, itself derived from a Yaqui or Ópata place name. U.S. occurrences cluster in the Southwest and California, where proximity to Mexico and the Gold Rush drove Spanish-language naming.",
           "totalRecords": 10,
           "regionCounts": {
             "northeast": 1,
@@ -23850,7 +23850,7 @@ window.placeDiffusionData = {
           "label": "Durango, Colorado",
           "type": "GNIS populated places",
           "summary": "Durango appears in 4 GNIS populated-place records across 4 contiguous U.S. states in this prototype subset.",
-          "note": "Current name adopted in 1883.",
+          "note": "Named after Durango, Mexico (the city and state), which in turn may derive from a Basque place name. U.S. places bearing the name are found mainly in the Southwest and are associated with Spanish and Mexican cultural influence.",
           "totalRecords": 4,
           "regionCounts": {
             "south": 2,
@@ -24165,7 +24165,7 @@ window.placeDiffusionData = {
           "label": "Guadalupe, California",
           "type": "GNIS populated places",
           "summary": "Guadalupe appears in 6 GNIS populated-place records across 5 contiguous U.S. states in this prototype subset.",
-          "note": "In Santa Maria Valley, on the south bank of the Santa Maria River, 12.8 km (8 mi) west of Santa Maria. (US-T121) Incorporated in 1946.",
+          "note": "Named after Nuestra Señora de Guadalupe, Mexico's patroness and a central figure in Mexican Catholic culture. The name reflects deep Spanish and Mexican religious influence in the Southwest and California.",
           "totalRecords": 6,
           "regionCounts": {
             "south": 1,
@@ -24588,7 +24588,7 @@ window.placeDiffusionData = {
           "label": "Tampico, Illinois",
           "type": "GNIS populated places",
           "summary": "Tampico appears in 6 GNIS populated-place records across 6 contiguous U.S. states in this prototype subset.",
-          "note": "Founded circa 1840.",
+          "note": "Named after Tampico, a port city in the Mexican state of Tamaulipas. U.S. occurrences are rare and date to the 19th century, likely reflecting trade connections or general Spanish-language naming fashions.",
           "totalRecords": 6,
           "regionCounts": {
             "south": 1,
@@ -25048,7 +25048,7 @@ window.placeDiffusionData = {
           "label": "Paris, Texas",
           "type": "GNIS populated places",
           "summary": "Paris appears in 22 GNIS populated-place records across 20 contiguous U.S. states in this prototype subset.",
-          "note": "Named for Isaac Paris, a merchant of Fort Plain.",
+          "note": "Named after Paris, France. The name was adopted enthusiastically in the U.S. during the late 18th and early 19th centuries, often as a gesture of Franco-American revolutionary solidarity. Secondary naming chains — towns named after Paris, Kentucky or Paris, Tennessee — further spread the name westward.",
           "totalRecords": 22,
           "regionCounts": {
             "northeast": 3,
@@ -26377,7 +26377,7 @@ window.placeDiffusionData = {
           "label": "Orleans, Vermont",
           "type": "GNIS populated places",
           "summary": "Orleans appears in 12 GNIS populated-place records across 11 contiguous U.S. states in this prototype subset.",
-          "note": "On Lower Cape Cod, at the SW end of Town Cove 3 mi NNE of Eastham; Town of Orleans. Established in 1797.",
+          "note": "Named after Orléans, France, the city associated with Joan of Arc and the Duchy of Orléans. 'New Orleans' was the most influential adoption; other U.S. Orléans communities derive partly from the Louisiana French naming tradition.",
           "totalRecords": 12,
           "regionCounts": {
             "northeast": 3,
@@ -27149,7 +27149,7 @@ window.placeDiffusionData = {
           "label": "Versailles, Kentucky",
           "type": "GNIS populated places",
           "summary": "Versailles appears in 10 GNIS populated-place records across 10 contiguous U.S. states in this prototype subset.",
-          "note": "Settled in 1818.",
+          "note": "Named after Versailles, France, site of the Palace of Versailles. The name carried strong associations with French royal grandeur and was adopted in the U.S. mainly in Kentucky and the Midwest during the early 19th century.",
           "totalRecords": 10,
           "regionCounts": {
             "northeast": 3,
@@ -27836,7 +27836,7 @@ window.placeDiffusionData = {
           "label": "Florence, South Carolina",
           "type": "GNIS populated places",
           "summary": "Florence appears in 41 GNIS populated-place records across 34 contiguous U.S. states in this prototype subset.",
-          "note": "2 mi SE of Leeds; City of Northampton. Named for Florence, Italy, when silk manufacture was first undertaken in this locality. (MGB 1932)",
+          "note": "Named after Florence (Firenze), Italy, the Renaissance city on the Arno River. The name was adopted in the U.S. primarily in the 19th century, often with conscious reference to Italian art and culture.",
           "totalRecords": 41,
           "regionCounts": {
             "northeast": 6,
@@ -30175,7 +30175,7 @@ window.placeDiffusionData = {
           "label": "Rome, Georgia",
           "type": "GNIS populated places",
           "summary": "Rome appears in 25 GNIS populated-place records across 18 contiguous U.S. states in this prototype subset.",
-          "note": "Founded in 1796. Incorporated in 1860.",
+          "note": "Named after Rome (Roma), Italy, the ancient capital of the Roman Empire. The name was a popular classical revival choice in the early U.S. republic, particularly in New York and the South.",
           "totalRecords": 25,
           "regionCounts": {
             "northeast": 4,
@@ -31630,7 +31630,7 @@ window.placeDiffusionData = {
           "label": "Venice, Florida",
           "type": "GNIS populated places",
           "summary": "Venice appears in 12 GNIS populated-place records across 11 contiguous U.S. states in this prototype subset.",
-          "note": "On Toke Point, at SE extremity of a 3mi sand spit.",
+          "note": "Named after Venice (Venezia), Italy, the canal city on the Adriatic. U.S. communities bearing the name often share some feature — waterways, canals, or lagoons — that evoked the Italian original.",
           "totalRecords": 12,
           "regionCounts": {
             "northeast": 1,
@@ -32428,7 +32428,7 @@ window.placeDiffusionData = {
           "label": "Dublin, Ohio",
           "type": "GNIS populated places",
           "summary": "Dublin appears in 20 GNIS populated-place records across 18 contiguous U.S. states in this prototype subset.",
-          "note": "Incorporated 1845",
+          "note": "Named after Dublin, Ireland's capital. Irish immigration, especially after the Famine of 1845–1852, drove the spread of Irish place names across the U.S., though many Dublins predate the Famine and reflect earlier Scots-Irish settlement patterns.",
           "totalRecords": 20,
           "regionCounts": {
             "northeast": 4,
@@ -33631,7 +33631,7 @@ window.placeDiffusionData = {
           "label": "Shannon, Georgia",
           "type": "GNIS populated places",
           "summary": "Shannon appears in 15 GNIS populated-place records across 13 contiguous U.S. states in this prototype subset.",
-          "note": "Located in secs 10 and 15,T18N,R1E, Fifth Principal Meridian",
+          "note": "Named after the River Shannon, Ireland's longest river. The name appears infrequently in the U.S. and is associated primarily with Irish immigrant communities in the South and Midwest.",
           "totalRecords": 15,
           "regionCounts": {
             "south": 9,
@@ -34564,7 +34564,7 @@ window.placeDiffusionData = {
           "label": "Limerick, Maine",
           "type": "GNIS populated places",
           "summary": "Limerick appears in 8 GNIS populated-place records across 8 contiguous U.S. states in this prototype subset.",
-          "note": "A smaller but still multi-state Irish-origin sample that complements the stronger Dublin pattern.",
+          "note": "Named after Limerick, Ireland, a city on the River Shannon. U.S. occurrences are rare and are associated with Irish immigrant settlement, particularly in New England and the mid-Atlantic.",
           "totalRecords": 8,
           "regionCounts": {
             "northeast": 3,
@@ -35133,7 +35133,7 @@ window.placeDiffusionData = {
           "label": "Amsterdam, New York",
           "type": "GNIS populated places",
           "summary": "Amsterdam appears in 11 GNIS populated-place records across 10 contiguous U.S. states in this prototype subset.",
-          "note": "Founded in 1804 and incorporated as a city in 1885.",
+          "note": "Named after Amsterdam, the Dutch capital. Early Dutch settlers carried the name to New York in the colonial period; later occurrences reflect broader 19th-century naming fashions.",
           "totalRecords": 11,
           "regionCounts": {
             "northeast": 3,
@@ -35840,7 +35840,7 @@ window.placeDiffusionData = {
           "label": "Holland, Michigan",
           "type": "GNIS populated places",
           "summary": "Holland appears in 31 GNIS populated-place records across 25 contiguous U.S. states in this prototype subset.",
-          "note": "Nortern Tip of Hamilton Reservoir at the 3.1 mi Eof Wales; Town of Holland.",
+          "note": "Named after Holland, the western coastal region and historical heart of the Netherlands. The name was carried to Michigan and the Midwest by Dutch immigrant communities in the mid-19th century.",
           "totalRecords": 31,
           "regionCounts": {
             "northeast": 8,
@@ -37634,7 +37634,7 @@ window.placeDiffusionData = {
           "label": "Zeeland, Michigan",
           "type": "GNIS populated places",
           "summary": "Zeeland appears in 2 GNIS populated-place records across 2 contiguous U.S. states in this prototype subset.",
-          "note": "Founded in 1902.",
+          "note": "Named after Zeeland, a province in the southwestern Netherlands. The name was brought to Michigan by Dutch settlers in the mid-19th century and is concentrated in that region.",
           "totalRecords": 2,
           "regionCounts": {
             "midwest": 2

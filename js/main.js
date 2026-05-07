@@ -746,13 +746,18 @@ function buildSourceNoteContext(place, visiblePoints) {
 
     if (state.focusedState) {
         const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
-        const focusedRecord = focusedRecords.find((point) => point.detailNote) || focusedRecords[0] || anchorRecord;
+        // Use the first record for the focused state — do NOT fall through to a
+        // sibling record that happens to have a detailNote. The old behaviour
+        // silently showed a location-specific note from a different state
+        // (e.g. Oxford NC showing the Massachusetts Acushnet River description).
+        const focusedRecord = focusedRecords[0] || anchorRecord;
 
         if (focusedRecord) {
             return {
                 kicker: "Focused State Note",
                 headline: focusedRecord.label,
-                note: focusedRecord.detailNote || `GNIS does not include a description/history note for ${focusedRecord.label}.`
+                note: focusedRecord.detailNote
+                    || `GNIS includes no description/history note for ${focusedRecord.label}.`
             };
         }
     }
@@ -3449,16 +3454,7 @@ function init() {
     elements.vizStage.addEventListener("pointerleave", handleVizPointerLeave);
     window.addEventListener("resize", syncInsetWindows);
 
-    // Render immediately with existing GNIS anchors — page is fully interactive at once.
     renderApp();
-
-    // If wikidataAnchors.js is present, re-render once it has patched the anchor
-    // records with historically earlier Wikidata results.  Use a timeout fallback
-    // so a missing or broken wikidataAnchors.js never prevents the second render.
-    if (window.wikidataAnchorsReady && typeof window.wikidataAnchorsReady.then === "function") {
-        const rerender = () => renderApp();
-        window.wikidataAnchorsReady.then(rerender, rerender);
-    }
 }
 
 document.addEventListener("DOMContentLoaded", init);
