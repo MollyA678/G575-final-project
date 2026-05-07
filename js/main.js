@@ -3449,13 +3449,15 @@ function init() {
     elements.vizStage.addEventListener("pointerleave", handleVizPointerLeave);
     window.addEventListener("resize", syncInsetWindows);
 
-    // Render immediately with existing GNIS anchors so the page is fully
-    // interactive from the start. wikidataAnchors.js patches data in the
-    // background and triggers a second silent re-render once done.
+    // Render immediately with existing GNIS anchors — page is fully interactive at once.
     renderApp();
 
-    if (window.wikidataAnchorsReady) {
-        window.wikidataAnchorsReady.then(() => renderApp());
+    // If wikidataAnchors.js is present, re-render once it has patched the anchor
+    // records with historically earlier Wikidata results.  Use a timeout fallback
+    // so a missing or broken wikidataAnchors.js never prevents the second render.
+    if (window.wikidataAnchorsReady && typeof window.wikidataAnchorsReady.then === "function") {
+        const rerender = () => renderApp();
+        window.wikidataAnchorsReady.then(rerender, rerender);
     }
 }
 

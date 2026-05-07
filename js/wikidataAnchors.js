@@ -321,7 +321,15 @@ LIMIT 5`;
         resolveReady();
     }
 
-    // Kick off as soon as the script is parsed (data files load before this one)
-    resolveAllAnchors();
+    // Wait for the DOM (and therefore placeData.js) to be fully parsed before
+    // querying, so window.placeDiffusionData is guaranteed to exist.
+    // The catch ensures resolveReady() is ALWAYS called even if something
+    // unexpected throws — so wikidataAnchorsReady never stays pending.
+    document.addEventListener("DOMContentLoaded", () => {
+        resolveAllAnchors().catch((err) => {
+            console.warn("[wikidataAnchors] Unhandled error:", err);
+            resolveReady();
+        });
+    });
 
 })();
