@@ -2238,6 +2238,20 @@ function renderUsaView(origin, place) {
                 </svg>
                 ${renderLocalInset(origin, place, "usa")}
             </div>
+
+            <div class="annotation-row">
+                <article class="annotation-card">
+                    <p class="annotation-card__eyebrow">How To Read This</p>
+                    <p>
+                        The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor.
+                    </p>
+                </article>
+                <article class="annotation-card">
+                    <p class="annotation-card__eyebrow">Visible Records</p>
+                    <div class="annotation-card__metric">${visiblePoints.length}</div>
+                    <p>${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}</p>
+                </article>
+            </div>
         </div>
     `;
 }
@@ -2924,39 +2938,16 @@ function renderGuidedState(step) {
         })
         .join("");
 
-    const guideText = "Select a country and place name";
+    const guideText = step === "origin"
+        ? "Choose a cultural origin from the Browse panel →"
+        : "Now choose a place name from the panel →";
 
     const guideSubtext = step === "origin"
-        ? "Begin by choosing a cultural origin from the Browse panel."
-        : "Now choose a related place name to load the diffusion map.";
-    
+        ? "Select England, Germany, Greece, or another origin to begin."
+        : "Pick a specific name to see its diffusion across the US.";
+
     elements.vizStage.innerHTML = `
         <div class="viz-layout viz-layout--usa">
-            <div class="map-stage-header">
-                <div></div>
-
-                <div class="map-meta-stack">
-                    <article class="annotation-card">
-                        <p class="annotation-card__eyebrow">How To Read This</p>
-                        <p>
-                            The bright anchor marks the selected GNIS reference record for this name.
-                            Every other visible point is routed from that anchor, and both color and
-                            local spread use distance from the anchor record rather than a hypothetical
-                            entry corridor.
-                        </p>
-                    </article>
-
-                    <article class="annotation-card">
-                        <p class="annotation-card__eyebrow">Visible Records</p>
-                        <div class="annotation-card__metric">${visiblePoints.length}</div>
-                        <p>
-                            ${state.activeFeatures.size} regional filters active ·
-                            ${state.activeEras.size} proxy eras active
-                            ${state.focusedState ? ` · focused on ${state.focusedState}` : ""}
-                        </p>
-                    </article>
-                </div>
-            </div>
             <div class="viz-frame map-frame">
                 <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="Awaiting selection">
                     <defs>
@@ -2971,8 +2962,8 @@ function renderGuidedState(step) {
                             <g class="map-state-layer">${statePolygons}</g>
                         </g>
                     </g>
-                    <text class="map-empty-guide" x="500" y="244" text-anchor="middle">${guideText}</text>
-                    <text class="map-empty-guide-sub" x="500" y="274" text-anchor="middle">${guideSubtext}</text>
+                    <text class="guided-prompt-title" x="500" y="244" text-anchor="middle">${guideText}</text>
+                    <text class="guided-prompt-sub" x="500" y="274" text-anchor="middle">${guideSubtext}</text>
                 </svg>
             </div>
         </div>
@@ -2995,19 +2986,15 @@ function renderGuidedState(step) {
     if (step === "origin") {
         elements.placeList.innerHTML = `<div class="empty-state guided-placeholder">Choose an origin above to see its place names.</div>`;
     }
+    
 
-    // Pulse-glow the active onboarding panel
-    const originPanel = document.getElementById("guided-origin-panel");
-    const placePanel = document.getElementById("guided-place-panel");
-
-    if (originPanel) {
-        originPanel.classList.toggle("is-guide-pulse", step === "origin");
-    }
-
-    if (placePanel) {
-        placePanel.classList.toggle("is-guide-pulse", step === "place");
-    }
-
+    // Drive glow class onto the relevant panel buttons
+    document.querySelectorAll(".origin-button").forEach((btn) => {
+        btn.classList.toggle("is-guide-prompt", step === "origin");
+    });
+    document.querySelectorAll(".place-button").forEach((btn) => {
+        btn.classList.toggle("is-guide-prompt", step === "place");
+    });
 }
 
 function renderEmptyState() {
