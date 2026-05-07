@@ -1721,16 +1721,16 @@ button {
 }
 
 .route-tech--ribbon {
-    opacity: 0.12;
-    filter: blur(0.45px);
+    opacity: 0.22;
+    filter: blur(1.2px);
 }
 
 .route-tech--glow {
-    opacity: 0.5;
+    opacity: 0.72;
 }
 
 .route-tech--core {
-    opacity: 0.14;
+    opacity: 0.55;
 }
 
 .route-tech-particle-cluster {
@@ -1745,7 +1745,7 @@ button {
 }
 
 .route-tech-particle--blur {
-    filter: blur(3.4px);
+    filter: blur(5.5px);
 }
 
 .route-tech-hitarea {
@@ -1757,7 +1757,7 @@ button {
 }
 
 .route-tech-bundle.is-linked .route-tech--glow {
-    opacity: 0.84;
+    opacity: 1;
 }
 
 .route-tech-bundle.is-linked .route-tech--ribbon {
@@ -1765,7 +1765,7 @@ button {
 }
 
 .route-tech-bundle.is-linked .route-tech--core {
-    opacity: 0.46;
+    opacity: 0.82;
 }
 
 .route-tech-bundle.is-linked .route-tech-particle {
@@ -1951,7 +1951,7 @@ button {
 
 @keyframes networkEdgeParticleFlicker {
     0% {
-        opacity: 0.74;
+        opacity: 0.88;
     }
 
     100% {

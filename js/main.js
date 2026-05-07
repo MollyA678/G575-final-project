@@ -497,9 +497,9 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
     const primary = Boolean(options.primary);
     // Particle count scales with the curve's screen length, but is bounded so very long routes don't render thousands of strokes
     const count = clamp(
-        Math.round(options.distance / (context === "inset" ? 18 : 20)),
-        context === "inset" ? 8 : 10,
-        context === "inset" ? 18 : 24
+        Math.round(options.distance / (context === "inset" ? 12 : 11)),
+        context === "inset" ? 12 : 18,
+        context === "inset" ? 28 : 48
     );
 
     return Array.from({ length: count }, (_, index) => {
@@ -533,14 +533,14 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
             + centerBias * (primary ? 0.42 : 0.3)
             + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.08, 5);
         const opacity = clamp(
-            (primary ? 0.62 : 0.48)
+            (primary ? 0.72 : 0.58)
             + centerBias * (primary ? 0.18 : 0.12)
-            + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.07, 6),
-            0.28,
-            0.96
+            + seededRange(`${seedKey}:particle:${index}`, -0.04, 0.06, 6),
+            0.48,
+            0.98
         );
-        const segmentLength = (primary ? 14.5 : 11.8) + centerBias * (primary ? 8.2 : 5.4);
-        const hidden = seededUnit(`${seedKey}:particle:${index}`, 7) < (primary ? 0.18 : 0.22);
+        const segmentLength = (primary ? 28.0 : 22.0) + centerBias * (primary ? 14.0 : 10.0);
+        const hidden = seededUnit(`${seedKey}:particle:${index}`, 7) < (primary ? 0.08 : 0.12);
 
         return {
             index,
@@ -746,18 +746,13 @@ function buildSourceNoteContext(place, visiblePoints) {
 
     if (state.focusedState) {
         const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
-        // Use the first record for the focused state — do NOT fall through to a
-        // sibling record that happens to have a detailNote. The old behaviour
-        // silently showed a location-specific note from a different state
-        // (e.g. Oxford NC showing the Massachusetts Acushnet River description).
-        const focusedRecord = focusedRecords[0] || anchorRecord;
+        const focusedRecord = focusedRecords.find((point) => point.detailNote) || focusedRecords[0] || anchorRecord;
 
         if (focusedRecord) {
             return {
                 kicker: "Focused State Note",
                 headline: focusedRecord.label,
-                note: focusedRecord.detailNote
-                    || `GNIS includes no description/history note for ${focusedRecord.label}.`
+                note: focusedRecord.detailNote || `GNIS does not include a description/history note for ${focusedRecord.label}.`
             };
         }
     }
@@ -951,9 +946,9 @@ function renderOverlayTechTrail(mapType, from, to, lift, options = {}) {
     const color = options.color || "rgba(255,255,255,0.9)";
     const glowColor = options.glowColor || colorWithAlpha(color, 0.18);
     const ribbonColor = options.ribbonColor || colorWithAlpha(color, 0.1);
-    const coreWidth = options.coreWidth || 0.44;
-    const glowWidth = options.glowWidth || 4.6;
-    const ribbonWidth = options.ribbonWidth || 10.8;
+    const coreWidth = options.coreWidth || 0.9;
+    const glowWidth = options.glowWidth || 9.0;
+    const ribbonWidth = options.ribbonWidth || 18.0;
     const tooltip = options.tooltip || "";
     const linkEntries = options.linkEntries || [];
     const focusEntries = options.focusEntries || [];
