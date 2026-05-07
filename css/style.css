@@ -1622,7 +1622,7 @@ button {
     opacity: 0.48;
     pointer-events: none;
     mix-blend-mode: screen;
-    animation: networkEdgePulse 8.6s ease-in-out infinite alternate;
+    animation: networkEdgePulse 14s ease-in-out infinite alternate;
     vector-effect: non-scaling-stroke;
 }
 
@@ -1721,16 +1721,16 @@ button {
 }
 
 .route-tech--ribbon {
-    opacity: 0.22;
-    filter: blur(1.2px);
+    opacity: 0.28;
+    filter: blur(2.0px);
 }
 
 .route-tech--glow {
-    opacity: 0.72;
+    opacity: 0.78;
 }
 
 .route-tech--core {
-    opacity: 0.55;
+    opacity: 0.65;
 }
 
 .route-tech-particle-cluster {
@@ -1745,7 +1745,7 @@ button {
 }
 
 .route-tech-particle--blur {
-    filter: blur(5.5px);
+    filter: blur(3.4px);
 }
 
 .route-tech-hitarea {
@@ -1761,11 +1761,11 @@ button {
 }
 
 .route-tech-bundle.is-linked .route-tech--ribbon {
-    opacity: 0.24;
+    opacity: 0.44;
 }
 
 .route-tech-bundle.is-linked .route-tech--core {
-    opacity: 0.82;
+    opacity: 0.9;
 }
 
 .route-tech-bundle.is-linked .route-tech-particle {
@@ -1951,7 +1951,7 @@ button {
 
 @keyframes networkEdgeParticleFlicker {
     0% {
-        opacity: 0.88;
+        opacity: 0.74;
     }
 
     100% {

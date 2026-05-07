@@ -497,9 +497,9 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
     const primary = Boolean(options.primary);
     // Particle count scales with the curve's screen length, but is bounded so very long routes don't render thousands of strokes
     const count = clamp(
-        Math.round(options.distance / (context === "inset" ? 12 : 11)),
-        context === "inset" ? 12 : 18,
-        context === "inset" ? 28 : 48
+        Math.round(options.distance / (context === "inset" ? 18 : 20)),
+        context === "inset" ? 8 : 10,
+        context === "inset" ? 18 : 24
     );
 
     return Array.from({ length: count }, (_, index) => {
@@ -533,14 +533,14 @@ function buildTechTrailParticleDescriptors(seedKey, geometry, options = {}) {
             + centerBias * (primary ? 0.42 : 0.3)
             + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.08, 5);
         const opacity = clamp(
-            (primary ? 0.72 : 0.58)
+            (primary ? 0.62 : 0.48)
             + centerBias * (primary ? 0.18 : 0.12)
-            + seededRange(`${seedKey}:particle:${index}`, -0.04, 0.06, 6),
-            0.48,
-            0.98
+            + seededRange(`${seedKey}:particle:${index}`, -0.05, 0.07, 6),
+            0.28,
+            0.96
         );
-        const segmentLength = (primary ? 28.0 : 22.0) + centerBias * (primary ? 14.0 : 10.0);
-        const hidden = seededUnit(`${seedKey}:particle:${index}`, 7) < (primary ? 0.08 : 0.12);
+        const segmentLength = (primary ? 14.5 : 11.8) + centerBias * (primary ? 8.2 : 5.4);
+        const hidden = seededUnit(`${seedKey}:particle:${index}`, 7) < (primary ? 0.18 : 0.22);
 
         return {
             index,
@@ -946,33 +946,20 @@ function renderOverlayTechTrail(mapType, from, to, lift, options = {}) {
     const color = options.color || "rgba(255,255,255,0.9)";
     const glowColor = options.glowColor || colorWithAlpha(color, 0.18);
     const ribbonColor = options.ribbonColor || colorWithAlpha(color, 0.1);
-    const coreWidth = options.coreWidth || 0.9;
-    const glowWidth = options.glowWidth || 9.0;
-    const ribbonWidth = options.ribbonWidth || 18.0;
+    const coreWidth = options.coreWidth || 1.1;
+    const glowWidth = options.glowWidth || 10.0;
+    const ribbonWidth = options.ribbonWidth || 20.0;
     const tooltip = options.tooltip || "";
     const linkEntries = options.linkEntries || [];
     const focusEntries = options.focusEntries || [];
-    const particles = buildTechTrailParticleDescriptors(seedKey, geometry, {
-        context: options.context || "main",
-        primary: options.primary !== false,
-        distance
-    }).map((descriptor) => {
-        const segment = describeTrailSegment(geometry, descriptor);
-        const baseAttrs = `data-overlay-particle="trail" data-map-from-x="${from.x}" data-map-from-y="${from.y}" data-map-to-x="${to.x}" data-map-to-y="${to.y}" data-map-lift="${lift}" data-map-particle-t="${descriptor.t.toFixed(5)}" data-map-particle-offset="${descriptor.lateralOffset.toFixed(3)}" data-map-particle-length="${descriptor.segmentLength.toFixed(3)}"`;
-        return `
-            <g class="network-edge-particle-cluster route-tech-particle-cluster" style="--spark-delay:${descriptor.delay.toFixed(2)}s" aria-hidden="true">
-                <line class="network-edge-particle network-edge-particle--blur route-tech-particle route-tech-particle--blur" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${glowColor}" stroke-width="${(descriptor.thickness * 2.5).toFixed(2)}" stroke-linecap="round" opacity="${(descriptor.opacity * 0.28).toFixed(3)}" ${baseAttrs}></line>
-                <line class="network-edge-particle route-tech-particle" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${color}" stroke-width="${descriptor.thickness.toFixed(2)}" stroke-linecap="round" opacity="${descriptor.opacity.toFixed(3)}" ${baseAttrs}></line>
-            </g>
-        `;
-    }).join("");
+    // Particles removed — ribbon + glow + core base paths carry the full visual.
 
     return `
         <g class="route-tech-bundle ${options.bundleClass || ""}" data-tooltip="${escapeAttr(tooltip)}" ${renderLinkKeysAttr(linkEntries)} ${renderFocusKeysAttr(focusEntries)}>
             <path class="route route-tech route-tech--ribbon" stroke="${ribbonColor}" stroke-width="${ribbonWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
             <path class="route route-tech route-tech--glow" stroke="${glowColor}" stroke-width="${glowWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
             <path class="route route-tech route-tech--core" stroke="${color}" stroke-width="${coreWidth}" aria-hidden="true" ${renderOverlayCurveAttrs(mapType, from, to, lift)}></path>
-            <g class="route-tech-particles">${particles}</g>
+            <!-- particles removed -->
             <path class="route-tech-hitarea" ${renderOverlayCurveAttrs(mapType, from, to, lift)} aria-hidden="true"></path>
         </g>
     `;
