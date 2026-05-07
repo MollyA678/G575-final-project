@@ -171,6 +171,14 @@
     <!-- Prebuilt geometry and curated GNIS sample data load before the interaction logic. -->
     <script src="js/mapShapes.js"></script>
     <script src="js/placeData.js"></script>
+    <!--
+        wikidataAnchors.js runs after placeData.js is available.
+        It queries Wikidata SPARQL to find the historically FIRST US place for
+        each tracked name and patches anchorRecord in-memory before main.js
+        renders for the first time.  main.js awaits window.wikidataAnchorsReady
+        before calling renderApp() so users always see historically-grounded anchors.
+    -->
+    <script src="js/wikidataAnchors.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
