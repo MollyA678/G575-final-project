@@ -3418,7 +3418,7 @@ function handleSearch(event) {
     renderApp();
 }
 
-async function init() {
+function init() {
     // Cache static DOM references once, then wire the dashboard through document-level delegated handlers.
     elements.originList = document.getElementById("origin-list");
     elements.placeList = document.getElementById("place-list");
@@ -3449,24 +3449,14 @@ async function init() {
     elements.vizStage.addEventListener("pointerleave", handleVizPointerLeave);
     window.addEventListener("resize", syncInsetWindows);
 
-    // Show a loading indicator in the viz stage while Wikidata anchors resolve.
-    // This keeps the UI responsive immediately while the SPARQL queries run in
-    // the background (one per place, politely spaced by 1 s each).
-    if (elements.vizStage) {
-        elements.vizStage.innerHTML =
-            `<div style="display:flex;align-items:center;justify-content:center;height:100%;`
-            + `color:var(--color-text-secondary,#a0b0c0);font-size:0.85rem;letter-spacing:0.08em;">`
-            + `RESOLVING HISTORICAL ANCHORS VIA WIKIDATA&hellip;</div>`;
-    }
-
-    // Wait for wikidataAnchors.js to finish patching all anchorRecord entries
-    // before the first render so diffusion lines always originate from the
-    // historically earliest known US location rather than the GNIS entry date.
-    if (window.wikidataAnchorsReady) {
-        await window.wikidataAnchorsReady;
-    }
-
+    // Render immediately with existing GNIS anchors so the page is fully
+    // interactive from the start. wikidataAnchors.js patches data in the
+    // background and triggers a second silent re-render once done.
     renderApp();
+
+    if (window.wikidataAnchorsReady) {
+        window.wikidataAnchorsReady.then(() => renderApp());
+    }
 }
 
 document.addEventListener("DOMContentLoaded", init);
