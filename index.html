@@ -7,6 +7,65 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+    <!-- ── Intro / Welcome Modal ────────────────────────────────────────── -->
+    <div class="intro-backdrop" id="intro-backdrop" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="intro-modal">
+            <button class="intro-modal__close" id="intro-close" aria-label="Close introduction">&#x2715;</button>
+
+            <p class="intro-modal__eyebrow">GEOG 575 &middot; Cultural Diffusion</p>
+            <h2 class="intro-modal__title" id="intro-title">Cultural Diffusion of Non-US Place Names</h2>
+
+            <div class="intro-modal__body">
+
+                <div class="intro-section">
+                    <p class="intro-section__label">What is this?</p>
+                    <p class="intro-section__text">
+                        This interactive map traces how place names from Europe and beyond spread
+                        across the United States over centuries of settlement and migration. Each
+                        point is a real USGS GNIS record &mdash; an officially recognized US place
+                        sharing its name with a non-US origin. Explore which cultures left the
+                        deepest naming footprints, when names proliferated most rapidly, and how far
+                        they traveled from their first known US appearance.
+                    </p>
+                </div>
+
+                <div class="intro-section intro-section--highlight">
+                    <p class="intro-section__label">Entry Corridor &mdash; The Historically First US Location</p>
+                    <p class="intro-section__text">
+                        Every place name has an <strong>anchor record</strong>: the earliest known
+                        US location where that name was officially recorded. This is the
+                        <em>entry corridor</em> &mdash; where cultural diffusion began on American
+                        soil. Anchors are sourced from Wikidata inception dates and matched to GNIS
+                        records, giving you a historically grounded origin point rather than an
+                        arbitrary database entry. The entry corridor reveals which community first
+                        carried a name westward, which era of settlement introduced it, and the
+                        migration corridor along which it subsequently spread.
+                    </p>
+                </div>
+
+                <div class="intro-section">
+                    <p class="intro-section__label">How to Explore</p>
+                    <p class="intro-section__text">
+                        Switch between <strong>Global / USA / Local</strong> views at the top right.
+                        In the left panel, select a cultural origin (e.g. Germany) then a specific
+                        place name (e.g. Berlin) to focus all views on that name&rsquo;s diffusion
+                        story. The right panel filters by US region and settlement era. Below the
+                        map, choose a <strong>Timeline</strong> (cumulative spread),
+                        <strong>Distance Profile</strong> (how far names traveled), or
+                        <strong>State Rank Scatter</strong> (which states adopted a name most).
+                        Hover any point for details &mdash; click to pin.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="intro-modal__footer">
+                <button class="intro-dismiss-btn" id="intro-dismiss">Start Exploring &#8594;</button>
+            </div>
+        </div>
+    </div>
+
     <main class="app-shell">
         <!-- Top-level narrative framing and view switching. -->
         <header class="hero">
@@ -180,5 +239,34 @@
     -->
     <script src="js/wikidataAnchors.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        (function () {
+            function dismissIntro() {
+                var backdrop = document.getElementById("intro-backdrop");
+                if (backdrop) {
+                    backdrop.classList.add("is-hidden");
+                    // Remove from DOM after transition so it no longer traps focus
+                    backdrop.addEventListener("transitionend", function () {
+                        backdrop.remove();
+                    }, { once: true });
+                }
+            }
+
+            document.getElementById("intro-close").addEventListener("click", dismissIntro);
+            document.getElementById("intro-dismiss").addEventListener("click", dismissIntro);
+
+            // Also dismiss on backdrop click (outside modal)
+            document.getElementById("intro-backdrop").addEventListener("click", function (e) {
+                if (e.target === this) dismissIntro();
+            });
+
+            // Keyboard: Escape closes the modal
+            document.addEventListener("keydown", function (e) {
+                if (e.key === "Escape" && document.getElementById("intro-backdrop")) {
+                    dismissIntro();
+                }
+            }, { once: true });
+        })();
+    </script>
 </body>
 </html>
