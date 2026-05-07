@@ -667,6 +667,75 @@ button {
     background: rgba(11, 18, 31, 0.9);
 }
 
+/* glow*/
+@keyframes guidedPulseGlow {
+    0% {
+        box-shadow:
+            0 0 0 1px rgba(85, 231, 255, 0.18),
+            0 0 12px rgba(85, 231, 255, 0.10),
+            0 0 28px rgba(85, 231, 255, 0.08);
+        border-color: rgba(85, 231, 255, 0.18);
+    }
+
+    50% {
+        box-shadow:
+            0 0 0 1px rgba(85, 231, 255, 0.55),
+            0 0 28px rgba(85, 231, 255, 0.42),
+            0 0 64px rgba(85, 231, 255, 0.24);
+        border-color: rgba(85, 231, 255, 0.48);
+    }
+
+    100% {
+        box-shadow:
+            0 0 0 1px rgba(85, 231, 255, 0.18),
+            0 0 12px rgba(85, 231, 255, 0.10),
+            0 0 28px rgba(85, 231, 255, 0.08);
+        border-color: rgba(85, 231, 255, 0.18);
+    }
+}
+
+.floating-panel__section.is-guide-pulse {
+    animation: guidedPulseGlow 2.2s ease-in-out infinite;
+}
+
+/* Top-right stacked annotation cards*/
+
+.map-meta-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 280px;
+    flex: 0 0 280px;
+}
+
+.map-stage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.map-stage-header .annotation-card {
+    min-width: 0;
+}
+
+/*  Empty map guidance message */
+
+.map-empty-guide {
+    font-size: 1.25rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    fill: rgba(225, 240, 255, 0.88);
+    font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
+}
+
+.map-empty-guide-sub {
+    font-size: 0.88rem;
+    fill: rgba(140, 164, 200, 0.92);
+    letter-spacing: 0.04em;
+}
+
 .viz-stage {
     min-height: clamp(620px, 74vh, 940px);
     order: 2;
