@@ -890,6 +890,43 @@ function buildReferenceVisiblePoints(place, points) {
     });
 }
 
+// Build the best available Story Note text for a single record, walking
+// the same fallback chain used by buildSourceNoteContext:
+//   1. GNIS detailNote on the record itself
+//   2. Wikidata description on the record (anchor-level)
+//   3. Wikidata description on the place (place-level)
+//   4. Namesake extract from the origin country
+//   5. Bare "GNIS does not include …" stub
+function buildNoteForRecord(record, fallbackLabel, place) {
+    if (record?.detailNote) return record.detailNote;
+
+    const recordDesc = record?.wikidataDescription;
+    if (recordDesc) {
+        return `Wikidata describes ${record.label || fallbackLabel} as: ${recordDesc}. `
+             + `GNIS does not include a history note for this record, so this fallback was sourced from Wikidata`
+             + (record.wikidataId ? ` (Q${record.wikidataId})` : "")
+             + ".";
+    }
+
+    const placeDesc = place?.wikidataDescription;
+    if (placeDesc) {
+        return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
+             + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
+             + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
+             + ".";
+    }
+
+    if (place?.namesakeExtract) {
+        const where = place.namesakeCountry ? ` in ${place.namesakeCountry}` : "";
+        const qid   = place.namesakeWikidataId ? ` (Q${place.namesakeWikidataId})` : "";
+        return `GNIS does not include a description/history note for ${fallbackLabel}. `
+             + `For context on the namesake, the original "${place.name}"${where} is described `
+             + `on Wikipedia${qid} as: ${place.namesakeExtract}`;
+    }
+
+    return `GNIS does not include a description/history note for ${fallbackLabel}.`;
+}
+
 function buildSourceNoteContext(place, visiblePoints) {
     const anchorRecord = getReferenceAnchorRecord(place);
 
@@ -902,38 +939,8 @@ function buildSourceNoteContext(place, visiblePoints) {
     // The Wikidata fallbacks are populated asynchronously by wikidataAnchors.js;
     // a "wikidata-anchor-updated" event triggers a re-render so notes appear
     // as soon as the SPARQL response lands, even mid-session.
-    const buildNote = (record, fallbackLabel) => {
-    if (record?.detailNote) return record.detailNote;
-
-    const recordDesc = record?.wikidataDescription;
-    if (recordDesc) {
-        return `Wikidata describes ${record.label || fallbackLabel} as: ${recordDesc}. `
-             + `GNIS does not include a history note for this record, so this fallback was sourced from Wikidata`
-             + (record.wikidataId ? ` (Q${record.wikidataId})` : "")
-             + ".";
-    }
-
-    const placeDesc = place.wikidataDescription;
-    if (placeDesc) {
-        return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
-             + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
-             + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
-             + ".";
-    }
-
-    // Deepest fallback: the *original* namesake in the origin country
-    // (e.g. Berlin, Germany when the US Berlin lacks any record-, place-,
-    // or Wikidata-level description). Fetched by wikidataAnchors.js.
-    if (place.namesakeExtract) {
-        const where = place.namesakeCountry ? ` in ${place.namesakeCountry}` : "";
-        const qid   = place.namesakeWikidataId ? ` (Q${place.namesakeWikidataId})` : "";
-        return `GNIS does not include a description/history note for ${fallbackLabel}. `
-             + `For context on the namesake, the original "${place.name}"${where} is described `
-             + `on Wikipedia${qid} as: ${place.namesakeExtract}`;
-    }
-
-    return `GNIS does not include a description/history note for ${fallbackLabel}.`;
-    };
+    const buildNote = (record, fallbackLabel) =>
+        buildNoteForRecord(record, fallbackLabel, place);
 
     if (state.focusedState) {
         const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
@@ -2305,6 +2312,22 @@ function clearPinnedInteraction() {
     state.pinnedInteraction = null;
     hideTooltip();
     syncLinkedHighlights();
+
+    // Restore Story Notes to the default anchor/place-level note.
+    if (elements.detailCopy && state.selectedPlaceId) {
+        const place = getSelectedPlace();
+        if (place) {
+            const visiblePoints = getVisibleUsPoints(place);
+            const sourceNote = buildSourceNoteContext(place, visiblePoints);
+            elements.detailCopy.textContent = sourceNote.note;
+            if (elements.detailEyebrow) {
+                elements.detailEyebrow.textContent = "Interpretation";
+            }
+            if (elements.detailHeading) {
+                elements.detailHeading.textContent = "Story Notes";
+            }
+        }
+    }
 }
 
 function togglePinnedInteraction(target, event) {
@@ -2328,6 +2351,36 @@ function togglePinnedInteraction(target, event) {
         clientY: event.clientY
     };
     syncPinnedInteractionDisplay();
+
+    // When a specific map point is clicked, update Story Notes with that
+    // record's own GNIS/Wikidata information rather than the generic anchor note.
+    // The focus-point key encodes the clicked record's id (e.g. "focus-point:1234").
+    const focusPointKey = keys.find((k) => k.startsWith("focus-point:"));
+    if (focusPointKey && state.selectedPlaceId) {
+        const recordId = decodeURIComponent(focusPointKey.split("focus-point:")[1] || "");
+        const place = getSelectedPlace();
+        if (place && recordId) {
+            // Search usaPoints first (filtered view), then all records, then anchor.
+            // createLinkKey lowercases the id, so compare case-insensitively.
+            const matchId = (r) => String(r.id).toLowerCase() === recordId;
+            const record =
+                (place.usaPoints || []).find(matchId) ||
+                (place.records   || []).find(matchId) ||
+                (matchId(place.anchorRecord || {}) ? place.anchorRecord : null);
+
+            if (record && elements.detailCopy) {
+                const isAnchor = record.id === place.anchorRecord?.id;
+                const note     = buildNoteForRecord(record, record.label, place);
+                elements.detailCopy.textContent = note;
+                if (elements.detailEyebrow) {
+                    elements.detailEyebrow.textContent = isAnchor ? "Anchor Record" : "Pinned Record";
+                }
+                if (elements.detailHeading) {
+                    elements.detailHeading.textContent = record.label;
+                }
+            }
+        }
+    }
 }
 
 function handleVizPointerMove(event) {
@@ -3278,6 +3331,13 @@ function renderDetails(origin, place) {
 
     elements.detailCopy.textContent = visibleContext.sourceNote.note;
 
+    if (elements.detailEyebrow) {
+        elements.detailEyebrow.textContent = "Interpretation";
+    }
+    if (elements.detailHeading) {
+        elements.detailHeading.textContent = "Story Notes";
+    }
+
     const metrics = [
         ["Origin group", origin.name],
         ["Selected name", place.name],
@@ -3378,6 +3438,8 @@ function renderGuidedState(step) {
     elements.statSummary.textContent = "Charts will appear once both a cultural origin and a place name are selected.";
     elements.statChart.innerHTML     = `<div class="empty-state guided-placeholder">Select an origin and a name to load charts.</div>`;
     elements.detailCopy.textContent  = "Snapshot metrics will appear once a place name is selected.";
+    if (elements.detailEyebrow) elements.detailEyebrow.textContent = "Interpretation";
+    if (elements.detailHeading) elements.detailHeading.textContent = "Story Notes";
     elements.metricList.innerHTML    = "";
 
     if (step === "origin") {
@@ -3414,6 +3476,8 @@ function renderEmptyState() {
     elements.eraLegend.innerHTML = `<div class="empty-state">No era filters available.</div>`;
     elements.vizStage.innerHTML = `<div class="empty-state">No view to render.</div>`;
     elements.detailCopy.textContent = "Clear or change the search to restore the prototype views.";
+    if (elements.detailEyebrow) elements.detailEyebrow.textContent = "Interpretation";
+    if (elements.detailHeading) elements.detailHeading.textContent = "Story Notes";
     elements.metricList.innerHTML = "";
     // Search returned no results — reset the Visible Records card to its
     // placeholder copy so the bottom row doesn't show a stale count.
@@ -3939,6 +4003,8 @@ function init() {
     elements.viewDescription = document.getElementById("view-description");
     elements.vizStage = document.getElementById("viz-stage");
     elements.detailCopy = document.getElementById("detail-copy");
+    elements.detailEyebrow = document.getElementById("detail-eyebrow");
+    elements.detailHeading = document.getElementById("detail-heading");
     elements.metricList = document.getElementById("metric-list");
     elements.searchInput = document.getElementById("search-input");
 
