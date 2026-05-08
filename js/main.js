@@ -1430,11 +1430,24 @@ function renderWorldPolygons(origin, options = {}) {
         .join("");
 
     const countryLabels = SHAPES.global.countries
-        .filter((country) => MAP_LABEL_COUNTRIES.has(country.name) || country.name === originCountry)
+        .filter((country) => {
+            const mappedOrigin = COUNTRY_ORIGIN_LOOKUP[country.name];
+            const isCurrentOrigin = country.name === originCountry;
+            // Only label countries that are selectable origin groups, the current origin,
+            // or the USA. Drop Canada and any others that just add overlap noise.
+            return mappedOrigin || isCurrentOrigin || country.name === "United States of America";
+        })
         .map((country) => {
             const mappedOrigin = COUNTRY_ORIGIN_LOOKUP[country.name];
             const isCurrentOrigin = country.name === originCountry;
-            const label = country.name === "United States of America" ? "USA" : country.name;
+            // When England is selected the polygon is "United Kingdom" — show the
+            // origin name ("England") rather than the formal country name so the
+            // map label matches what the Browse panel calls it.
+            const label = country.name === "United States of America"
+                ? "USA"
+                : (isCurrentOrigin && origin.name !== country.name)
+                    ? origin.name
+                    : (mappedOrigin || country.name);
             const tooltip = mappedOrigin
                 ? `${mappedOrigin} origin group${mappedOrigin === origin.name ? " (selected)" : ""} · click to select`
                 : label;
@@ -1447,7 +1460,7 @@ function renderWorldPolygons(origin, options = {}) {
                     text-anchor="middle"
                     data-scale-label="true"
                     data-base-font-size="13"
-                    data-base-stroke-width="5"
+                    data-base-stroke-width="8"
                     data-tooltip="${escapeAttr(tooltip)}"
                     ${mappedOrigin ? `data-origin="${escapeAttr(mappedOrigin)}"` : ""}
                     ${isCurrentOrigin ? renderLinkKeysAttr([["origin", origin.id]]) : ""}

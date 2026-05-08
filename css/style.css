@@ -1363,8 +1363,8 @@ button {
 .country-label {
     font-size: 13px;
     opacity: 0.74;
-    /* Wider stroke creates a dark halo that pushes overlapping labels apart visually */
-    stroke-width: 8px;
+    /* Wider stroke creates a dark halo that separates overlapping labels */
+    stroke-width: 9px;
 }
 
 .country-label.is-origin {
