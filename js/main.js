@@ -897,7 +897,9 @@ function buildReferenceVisiblePoints(place, points) {
 //   3. Wikidata description on the place (place-level)
 //   4. Namesake extract from the origin country
 //   5. Bare "GNIS does not include …" stub
-function buildNoteForRecord(record, fallbackLabel, place) {
+function buildNoteForRecord(record, fallbackLabel, place, options = {}) {
+    const allowNamesake = options.allowNamesake !== false; // default true for clicked points
+
     if (record?.detailNote) return record.detailNote;
 
     const recordDesc = record?.wikidataDescription;
@@ -910,13 +912,13 @@ function buildNoteForRecord(record, fallbackLabel, place) {
 
     const placeDesc = place?.wikidataDescription;
     if (placeDesc) {
-        return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
+        return `Wikidata describes the anchor record "${place.anchorRecord?.label || place.name}" as: ${placeDesc}. `
              + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
              + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
              + ".";
     }
 
-    if (place?.namesakeExtract) {
+    if (allowNamesake && place?.namesakeExtract) {
         const where = place.namesakeCountry ? ` in ${place.namesakeCountry}` : "";
         const qid   = place.namesakeWikidataId ? ` (Q${place.namesakeWikidataId})` : "";
         return `GNIS does not include a description/history note for ${fallbackLabel}. `
@@ -924,7 +926,7 @@ function buildNoteForRecord(record, fallbackLabel, place) {
              + `on Wikipedia${qid} as: ${place.namesakeExtract}`;
     }
 
-    return `GNIS does not include a description/history note for ${fallbackLabel}.`;
+    return `GNIS does not include a description/history note for ${fallbackLabel}. Click any point on the map to look up its specific Wikipedia entry.`;
 }
 
 function buildSourceNoteContext(place, visiblePoints) {
@@ -940,7 +942,7 @@ function buildSourceNoteContext(place, visiblePoints) {
     // a "wikidata-anchor-updated" event triggers a re-render so notes appear
     // as soon as the SPARQL response lands, even mid-session.
     const buildNote = (record, fallbackLabel) =>
-        buildNoteForRecord(record, fallbackLabel, place);
+        buildNoteForRecord(record, fallbackLabel, place, { allowNamesake: false });
 
     if (state.focusedState) {
         const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
@@ -3239,11 +3241,6 @@ function renderLocalView(origin, place) {
                         <h3>${place.name} routes</h3>
                         ${renderMiniMap(origin, place)}
                     </article>
-                    <article class="annotation-card">
-                        <p class="annotation-card__eyebrow">${visibleContext.sourceNote.kicker}</p>
-                        <h3>${visibleContext.sourceNote.headline}</h3>
-                        <p>${visibleContext.sourceNote.note}</p>
-                    </article>
                 </div>
 
                 <div>
@@ -3354,6 +3351,27 @@ function renderDetails(origin, place) {
     }
     if (elements.detailHeading) {
         elements.detailHeading.textContent = "Story Notes";
+    }
+
+    // If the anchor has no specific description yet, fetch it so Story Notes
+    // shows the actual US place's Wikipedia info rather than a bare stub.
+    // Only do this when no point is currently pinned (so we don't overwrite
+    // a user's explicit click choice).
+    if (
+        anchor &&
+        !anchor.detailNote &&
+        !anchor.wikidataDescription &&
+        !state.pinnedInteraction &&
+        window.fetchRecordDescription
+    ) {
+        const placeIdAtRender = place.id;
+        window.fetchRecordDescription(anchor).then(() => {
+            // Only update if the user hasn't changed place or pinned something
+            if (state.pinnedInteraction) return;
+            if (getSelectedPlace()?.id !== placeIdAtRender) return;
+            const updatedNote = buildSourceNoteContext(place, getVisibleUsPoints(place));
+            elements.detailCopy.textContent = updatedNote.note;
+        }).catch(() => {});
     }
 
     const metrics = [
