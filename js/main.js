@@ -3133,42 +3133,43 @@ function renderLocalInset(origin, place, contextLabel) {
     `;
 }
 
+
 function renderMiniMap(origin, place) {
-    // The mini map gives the local view a geographic companion without leaving the distance-first network layout.
     const visibleContext = buildVisibleContext(place);
-    const { visiblePoints, stateCounts } = visibleContext;
+    const { stateCounts } = visibleContext;
+    const visiblePoints = buildReferenceVisiblePoints(place, getVisibleUsPoints(place));
     const anchorRecord = getReferenceAnchorRecord(place);
-    const hub = {
-        x: anchorRecord.x,
-        y: anchorRecord.y
-    };
-    const activeStates = new Set(visiblePoints.map((point) => point.state));
+    const hub = { x: anchorRecord.x, y: anchorRecord.y };
+    const activeStates = new Set(visiblePoints.map((p) => p.state));
+    const maxDistanceKm = Math.max(1, ...visiblePoints.map((p) => getReferenceDistanceKm(p)));
+    const distColor = (p) => mixColors("#63ebff", "#ff4fb8", getReferenceDistanceKm(p) / maxDistanceKm, 0.9);
 
     return `
         <svg class="viz-svg" viewBox="0 0 1000 560" role="img" aria-label="Inset map">
             <rect class="map-surface" x="20" y="20" width="960" height="520" rx="34"></rect>
             ${buildGrid(1000, 560, 84)}
             ${renderUsaPolygons(activeStates, stateCounts, { showLabels: false, detailLevel: "medium" })}
-            ${visiblePoints
-                .map((point) => {
-                    if (point.isAnchorRecord) {
-                        return "";
-                    }
-                    const target = { x: point.x, y: point.y };
-                    return `<path class="route" d="${curvedPath(hub, target, 36)}" stroke="${ERAS.find((era) => era.key === point.era).color}" data-tooltip="${escapeAttr(`${anchorRecord.label} to ${point.label}`)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-route", point.id]])}></path>`;
-                })
-                .join("")}
-            <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="8" data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}" ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}></circle>
-            ${visiblePoints
-                .map((point) => `
-                    <circle class="dot-point" cx="${point.x}" cy="${point.y}" r="${point.isAnchorRecord ? 5.5 : 4}" fill="${point.isAnchorRecord ? "#f6fbff" : (REGION_COLORS[point.region] || origin.accent)}" data-tooltip="${escapeAttr(point.isAnchorRecord ? `${anchorRecord.label} · selected anchor record` : point.tooltip)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", point.id]])}></circle>
-                `)
-                .join("")}
-            ${
-                !visiblePoints.length
-                    ? `<text class="chart-note" x="500" y="290" text-anchor="middle">No visible records remain under the current filters.</text>`
-                    : ""
-            }
+            ${visiblePoints.map((point) => {
+                if (point.isAnchorRecord) return "";
+                const target = { x: point.x, y: point.y };
+                return `<path class="route" d="${curvedPath(hub, target, 36)}" stroke="${distColor(point)}" data-tooltip="${escapeAttr(`${anchorRecord.label} to ${point.label}`)}" ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-route", point.id]])}></path>`;
+            }).join("")}
+            <circle class="marker marker--hub" cx="${hub.x}" cy="${hub.y}" r="8"
+                data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}"
+                ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])}
+                ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}></circle>
+            ${visiblePoints.map((point) => `
+                <circle class="dot-point"
+                    cx="${point.x}" cy="${point.y}"
+                    r="${point.isAnchorRecord ? 5.5 : 4}"
+                    fill="${point.isAnchorRecord ? "#f6fbff" : distColor(point)}"
+                    data-tooltip="${escapeAttr(point.isAnchorRecord ? `${anchorRecord.label} · selected anchor record` : point.tooltip)}"
+                    ${renderLinkKeysAttr([["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]])}
+                    ${renderFocusKeysAttr([["focus-point", point.id]])}></circle>
+            `).join("")}
+            ${!visiblePoints.length
+                ? `<text class="chart-note" x="500" y="290" text-anchor="middle">No visible records remain under the current filters.</text>`
+                : ""}
         </svg>
     `;
 }
