@@ -421,6 +421,15 @@ function mixColors(colorA, colorB, t, alpha = 1) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function getProxyYearColor(proxyYear, alpha = 0.94, extent = { min: 1650, max: 1900 }) {
+    if (!proxyYear || !Number.isFinite(proxyYear)) {
+        return colorWithAlpha("#8ca4c8", alpha);
+    }
+    const { min, max } = extent || { min: 1650, max: 1900 };
+    const t = clamp((proxyYear - min) / Math.max(max - min, 1), 0, 1);
+    return mixColors("#63ebff", "#ff4fb8", t, alpha);
+}
+
 // Standard FNV-1a 32-bit hash
 function hashString(value) {
     let hash = 2166136261;
@@ -2126,7 +2135,7 @@ function buildVisibleContext(place) {
         highlight: index === 0,
         state: entry.state
     }));
-
+    const proxyYearExtent = buildProxyYearExtent(distanceStateEntries);
     return {
         visiblePoints,
         stateCounts,
@@ -2137,6 +2146,7 @@ function buildVisibleContext(place) {
         distanceHistogram,
         distanceBars,
         rankPoints,
+        proxyYearExtent,
         sourceNote: buildSourceNoteContext(place, visiblePoints)
     };
 }
