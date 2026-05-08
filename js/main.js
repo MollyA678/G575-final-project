@@ -265,7 +265,8 @@ const state = {
     linkedKeys: "",
     pinnedInteraction: null,
     insetInteraction: null,
-    mapDrag: null
+    mapDrag: null,
+    lastDragHasMoved: false
 };
 
 const GLOBAL_COUNTRY_SHAPES = new Map(
@@ -2259,7 +2260,10 @@ function setupMapInteractions() {
                 startX: startPoint.x,
                 startY: startPoint.y,
                 startTx: state.mapViews[mapType].tx,
-                startTy: state.mapViews[mapType].ty
+                startTy: state.mapViews[mapType].ty,
+                hasMoved: false,
+                startClientX: event.clientX,
+                startClientY: event.clientY
             };
             svg.setPointerCapture(event.pointerId);
             svg.classList.add("is-dragging");
@@ -2269,6 +2273,12 @@ function setupMapInteractions() {
         svg.addEventListener("pointermove", (event) => {
             if (!state.mapDrag || state.mapDrag.mapType !== mapType || state.mapDrag.pointerId !== event.pointerId) {
                 return;
+            }
+
+            const dx = event.clientX - state.mapDrag.startClientX;
+            const dy = event.clientY - state.mapDrag.startClientY;
+            if (Math.hypot(dx, dy) > 4) {
+                state.mapDrag.hasMoved = true;
             }
 
             const currentPoint = buildSvgPoint(svg, event.clientX, event.clientY);
@@ -2284,6 +2294,9 @@ function setupMapInteractions() {
                 return;
             }
 
+            // Preserve whether this pointerup ends a real drag or just a tap,
+            // so handleClick (which fires after pointerup) can suppress pan-end clicks.
+            state.lastDragHasMoved = state.mapDrag.hasMoved;
             state.mapDrag = null;
             svg.classList.remove("is-dragging");
             if (svg.hasPointerCapture?.(event.pointerId)) {
@@ -3801,6 +3814,7 @@ function renderApp() {
     const valid = normalizeSelection();
     state.mapDrag = null;
     state.insetInteraction = null;
+    state.lastDragHasMoved = false;
     state.linkedKeys = "";
     state.pinnedInteraction = null;
     hideTooltip();
@@ -3870,7 +3884,25 @@ function resetCurrentFocus() {
 }
 
 function handleClick(event) {
-    const insetToggleButton = event.target.closest("[data-local-inset-toggle]");
+    // If the click follows a real drag (pointer moved > 4px), suppress it entirely
+    // so panning the map doesn't accidentally trigger origin/place/state changes.
+    if (state.lastDragHasMoved) {
+        state.lastDragHasMoved = false;
+        return;
+    }
+    state.lastDragHasMoved = false;
+
+    // When the map SVG has pointer capture, event.target is the SVG element rather
+    // than the child path/text under the cursor. Use elementFromPoint to find the
+    // real element so data-origin, data-state-focus etc. are discoverable.
+    const realTarget = document.elementFromPoint(event.clientX, event.clientY) || event.target;
+    const effectiveEvent = realTarget !== event.target
+        ? { ...event, target: realTarget, clientX: event.clientX, clientY: event.clientY }
+        : event;
+
+    // Re-bind closest() lookups to the real element
+    const closestFrom = (selector) => realTarget.closest(selector);
+    const insetToggleButton = closestFrom("[data-local-inset-toggle]");
     if (insetToggleButton) {
         const viewType = insetToggleButton.dataset.localInsetToggle;
         const inset = getInsetWindowState(viewType);
@@ -3884,7 +3916,7 @@ function handleClick(event) {
         return;
     }
 
-    const insetScaleButton = event.target.closest("[data-local-inset-scale]");
+    const insetScaleButton = closestFrom("[data-local-inset-scale]");
     if (insetScaleButton) {
         const viewType = insetScaleButton.dataset.localInsetView;
         const action = insetScaleButton.dataset.localInsetScale;
@@ -3907,7 +3939,7 @@ function handleClick(event) {
         return;
     }
 
-    const panelToggle = event.target.closest("[data-panel-toggle]");
+    const panelToggle = closestFrom("[data-panel-toggle]");
     if (panelToggle) {
         const side = panelToggle.dataset.panelToggle;
         const stateKey = side === "left" ? "leftCollapsed" : "rightCollapsed";
@@ -3916,7 +3948,7 @@ function handleClick(event) {
         return;
     }
 
-    const mapZoomButton = event.target.closest("[data-map-zoom]");
+    const mapZoomButton = closestFrom("[data-map-zoom]");
     if (mapZoomButton) {
         const mapType = mapZoomButton.dataset.mapType;
         const action = mapZoomButton.dataset.mapZoom;
@@ -3933,7 +3965,7 @@ function handleClick(event) {
         return;
     }
 
-    const placeButton = event.target.closest("[data-place-id]");
+    const placeButton = closestFrom("[data-place-id]");
     if (placeButton) {
         if (placeButton.dataset.origin) {
             state.selectedOrigin = placeButton.dataset.origin;
@@ -3943,7 +3975,7 @@ function handleClick(event) {
         return;
     }
 
-    const originButton = event.target.closest("[data-origin]");
+    const originButton = closestFrom("[data-origin]");
     if (originButton) {
         const nextOrigin = originButton.dataset.origin;
         if (nextOrigin === state.selectedOrigin) {
@@ -3959,10 +3991,8 @@ function handleClick(event) {
         return;
     }
 
-    const regionZoomTarget = event.target.closest("[data-region-zoom]");
+    const regionZoomTarget = closestFrom("[data-region-zoom]");
     if (regionZoomTarget && elements.vizStage.contains(regionZoomTarget)) {
-        // Zoom local-main past the compactMax threshold so individual state nodes appear,
-        // centering the zoom on the clicked region node's position within the SVG.
         const mapType = "local-main";
         const svg = document.querySelector(`[data-map-svg="${mapType}"]`);
         const targetScale = LOCAL_NETWORK_LOD_THRESHOLDS.main.compactMax + 0.25;
@@ -3974,7 +4004,6 @@ function handleClick(event) {
             const viewBox = svg.viewBox?.baseVal;
             const vbW = viewBox?.width  || MAP_VIEWBOX.width;
             const vbH = viewBox?.height || MAP_VIEWBOX.height;
-            // Convert node SVG coords to screen-space anchor for zoomMapAt
             const screenX = rect.left + (nodeX / vbW) * rect.width;
             const screenY = rect.top  + (nodeY / vbH) * rect.height;
             const svgAnchor = buildSvgPoint(svg, screenX, screenY);
@@ -3985,9 +4014,8 @@ function handleClick(event) {
         return;
     }
 
-    const stateFocusTarget = event.target.closest("[data-state-focus]");
+    const stateFocusTarget = closestFrom("[data-state-focus]");
     if (stateFocusTarget && elements.vizStage.contains(stateFocusTarget)) {
-        // State focus is handled before generic pinning so map/local-view filtering updates immediately.
         const nextState = stateFocusTarget.dataset.stateFocus;
         const payload = getHighlightPayload(stateFocusTarget);
         state.focusedState = state.focusedState === nextState ? null : nextState;
@@ -4004,7 +4032,7 @@ function handleClick(event) {
         return;
     }
 
-    const viewButton = event.target.closest("[data-view]");
+    const viewButton = closestFrom("[data-view]");
     if (viewButton) {
         state.selectedView = viewButton.dataset.view;
         state.selectedStat = VIEW_DEFAULT_STATS[state.selectedView];
@@ -4012,7 +4040,7 @@ function handleClick(event) {
         return;
     }
 
-    const eraButton = event.target.closest("[data-era]");
+    const eraButton = closestFrom("[data-era]");
     if (eraButton) {
         const { era } = eraButton.dataset;
         if (state.activeEras.has(era)) {
@@ -4029,20 +4057,20 @@ function handleClick(event) {
         return;
     }
 
-    const interactiveTarget = elements.vizStage.contains(event.target)
-        ? event.target.closest("[data-tooltip], [data-link-keys], [data-focus-keys]")
+    const interactiveTarget = elements.vizStage.contains(realTarget)
+        ? closestFrom("[data-tooltip], [data-link-keys], [data-focus-keys]")
         : null;
     if (interactiveTarget) {
         togglePinnedInteraction(interactiveTarget, event);
         return;
     }
 
-    if (state.pinnedInteraction && event.target.closest(".viz-svg")) {
+    if (state.pinnedInteraction && closestFrom(".viz-svg")) {
         clearPinnedInteraction();
         return;
     }
 
-    const actionButton = event.target.closest("[data-action='reset']");
+    const actionButton = closestFrom("[data-action='reset']");
     if (actionButton) {
         resetCurrentFocus();
     }
