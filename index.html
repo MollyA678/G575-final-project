@@ -99,31 +99,41 @@
         <section class="workspace">
             <section class="main-panel">
                 <!--
-                    Statistics card has been promoted ABOVE the map. It used to
-                    sit beside Snapshot in the analysis row below the map; with
-                    the more compact hero, this is now the natural place for
-                    the chart so it's the first analytical surface a user sees.
+                    Above-map row: Stats chart (left, ~65%) and Snapshot context
+                    (right, ~35%) sit side by side so both are visible before
+                    the user scrolls to the map. The old "Visible Records" card
+                    has been removed; its count now lives inside the stat summary.
                 -->
-                <section class="stats-card">
-                    <div class="stats-card__header">
-                        <div>
-                            <p class="section-heading__eyebrow">Statistics</p>
-                            <h2 id="stat-title" class="section-heading__title">Places named Kingston over time</h2>
-                            <p id="stat-summary" class="section-copy"></p>
+                <div class="above-map-row">
+                    <section class="stats-card above-map-row__stats">
+                        <div class="stats-card__header">
+                            <div>
+                                <p class="section-heading__eyebrow">Statistics</p>
+                                <h2 id="stat-title" class="section-heading__title">Places named Kingston over time</h2>
+                                <p id="stat-summary" class="section-copy"></p>
+                            </div>
+
+                            <label class="select-box" for="stat-select">
+                                <span class="select-box__label">Choose statistic</span>
+                                <select id="stat-select">
+                                    <option value="timeline">Growth over time</option>
+                                    <option value="distance">Distance profile</option>
+                                    <option value="rank">Local rank scatter</option>
+                                </select>
+                            </label>
                         </div>
 
-                        <label class="select-box" for="stat-select">
-                            <span class="select-box__label">Choose statistic</span>
-                            <select id="stat-select">
-                                <option value="timeline">Growth over time</option>
-                                <option value="distance">Distance profile</option>
-                                <option value="rank">Local rank scatter</option>
-                            </select>
-                        </label>
-                    </div>
+                        <div id="stat-chart" class="chart-frame" aria-live="polite"></div>
+                    </section>
 
-                    <div id="stat-chart" class="chart-frame" aria-live="polite"></div>
-                </section>
+                    <section class="detail-card detail-card--snapshot above-map-row__snapshot">
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Snapshot</p>
+                            <h2 class="section-heading__title">Selected Context</h2>
+                        </div>
+                        <dl id="metric-list" class="metric-list"></dl>
+                    </section>
+                </div>
 
                 <!-- Primary map stage with floating browse/layer controls. -->
                 <section class="viz-card viz-card--hero">
@@ -216,37 +226,18 @@
                 </section>
 
                 <!--
-                    Bottom row: Visible Records, Interpretation (Story Notes), and
-                    Snapshot (Selected Context) sit side-by-side in a single line
-                    below the map. Visible Records was previously in the hero rail;
-                    the other two were in separate rows beneath the analysis card.
+                    Below the map: Story Notes (Interpretation) spans the full
+                    width. Visible Records was removed; Snapshot moved above the map.
                 -->
-                <div class="panel-row panel-row--bottom">
-                    <article class="annotation-card panel-row__card" id="hero-card-records">
-                        <p class="annotation-card__eyebrow">Visible Records</p>
-                        <div class="annotation-card__metric" id="hero-records-metric">—</div>
-                        <p id="hero-records-summary">Select a country and a place name to load records.</p>
-                    </article>
-
-                    <section class="detail-card panel-row__card">
-                        <div>
-                            <div class="section-heading">
-                                <p class="section-heading__eyebrow">Interpretation</p>
-                                <h2 class="section-heading__title">Story Notes</h2>
-                            </div>
-                            <p id="detail-copy" class="detail-copy"></p>
-                        </div>
-                    </section>
-
-                    <section class="detail-card detail-card--snapshot panel-row__card">
-                        <!-- Compact metric readout for the current origin / place / filter state. -->
+                <section class="detail-card panel-row__card story-notes-card">
+                    <div>
                         <div class="section-heading">
-                            <p class="section-heading__eyebrow">Snapshot</p>
-                            <h2 class="section-heading__title">Selected Context</h2>
+                            <p class="section-heading__eyebrow">Interpretation</p>
+                            <h2 class="section-heading__title">Story Notes</h2>
                         </div>
-                        <dl id="metric-list" class="metric-list"></dl>
-                    </section>
-                </div>
+                        <p id="detail-copy" class="detail-copy"></p>
+                    </div>
+                </section>
             </section>
         </section>
     </main>

@@ -161,32 +161,12 @@ button {
 }
 
 /*
-    Bottom row beneath the map: three peer cards in a single line —
-    Visible Records (compact metric), Story Notes (interpretation copy),
-    and Selected Context (snapshot dl). They share a flexible layout so
-    the prose card breathes while the two metric cards stay readable.
+    Bottom row beneath the map: only Story Notes remains (full-width).
+    The old three-card layout (Visible Records + Story Notes + Snapshot)
+    has been replaced — Visible Records was removed and Snapshot moved above the map.
 */
 .panel-row--bottom {
-    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr) minmax(240px, 1fr);
-    margin-top: 18px;
-    align-items: stretch;
-}
-
-.panel-row--bottom .panel-row__card {
-    height: 100%;
-}
-
-.panel-row--bottom .annotation-card__metric {
-    /* Slightly toned-down from the original 2.25rem so the metric balances
-       against the prose card next to it without dominating the row. */
-    font-size: 2rem;
-    margin: 6px 0 6px;
-}
-
-.panel-row--bottom .annotation-card p,
-.panel-row--bottom .detail-copy {
-    font-size: 0.92rem;
-    line-height: 1.55;
+    margin-top: 0;
 }
 
 .panel-card,
@@ -487,7 +467,6 @@ button {
 
 /* Statistic cards use the same dark frame, but with extra breathing room for SVG plots. */
 .chart-frame {
-    /* Reduced to match compact chart SVG heights (175–190px + 10px padding) */
     min-height: 160px;
     border-radius: 28px;
     padding: 10px;
@@ -496,6 +475,34 @@ button {
         linear-gradient(180deg, rgba(7, 12, 23, 0.96), rgba(3, 7, 15, 0.98));
     border: 1px solid rgba(106, 161, 235, 0.14);
     box-shadow: inset 0 0 0 1px rgba(126, 184, 255, 0.06), 0 0 32px rgba(85, 231, 255, 0.05);
+}
+
+/*
+    Above-map two-column row: stats chart takes ~63% of the width,
+    snapshot context takes ~37%. Both cards share the same visual height
+    so the row feels balanced before the map appears below.
+*/
+.above-map-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr);
+    gap: 16px;
+    align-items: stretch;
+}
+
+.above-map-row__stats,
+.above-map-row__snapshot {
+    height: 100%;
+}
+
+/* Snapshot metric-list uses two columns to halve its vertical footprint */
+.above-map-row__snapshot .metric-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 14px;
+}
+
+/* Story notes card below the map spans the full width */
+.story-notes-card {
+    margin-top: 16px;
 }
 
 .legend-list {
@@ -1613,8 +1620,7 @@ button {
 }
 
 .detail-card--snapshot .metric-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 16px;
+    grid-template-columns: 1fr;
 }
 
 .metric-row {
@@ -2103,10 +2109,13 @@ button {
         grid-template-columns: 1fr;
     }
 
-    /* The bottom row collapses to stacked cards once the viewport gets too
-       narrow for three peers to share a line comfortably. */
-    .panel-row--bottom {
+    /* Above-map row collapses to stacked at medium viewports */
+    .above-map-row {
         grid-template-columns: 1fr;
+    }
+
+    .above-map-row__snapshot .metric-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     /* Hero stays 2-col (title + view switch) until very narrow viewports

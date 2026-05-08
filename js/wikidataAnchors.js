@@ -124,9 +124,6 @@
         // service whenever ?itemLabel is requested; we surface it here so
         // main.js can fall back to the Wikidata description when GNIS does
         // not have a history note for the selected record.
-        // ?article captures the English Wikipedia sitelink so we can fetch a
-        // richer prose extract via the REST API when the short description is
-        // too thin to be useful in the Story Notes block.
         return `
 SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel ?article WHERE {
   ?item rdfs:label "${safe}"@en .
@@ -151,31 +148,23 @@ ORDER BY ASC(?inception) ASC(?item)
 LIMIT 5`;
     }
 
-    // ── Wikipedia REST API extract ─────────────────────────────────────────────
-    // Fetches a plain-text article extract (1–3 paragraphs of prose) from the
-    // Wikipedia REST summary endpoint.  The endpoint is CORS-open, requires no
-    // key, and returns a "extract" field that is far richer than the one-liner
-    // Wikidata description.  We only call this when the SPARQL result contains
-    // an article sitelink AND the Wikidata description is missing or very short.
+    // ── Wikipedia REST summary extract ────────────────────────────────────────
+    // Fetches the lead-section prose from the Wikipedia REST API when the
+    // Wikidata description is absent or a short one-liner (≤ 60 chars).
+    // The endpoint is CORS-open and requires no API key.
 
     async function fetchWikipediaExtract(articleUrl) {
         try {
-            // articleUrl looks like "https://en.wikipedia.org/wiki/Berlin,_Wisconsin"
             const title = decodeURIComponent(articleUrl.split("/wiki/").pop() || "");
             if (!title) return null;
-
             const apiUrl = WIKIPEDIA_API + encodeURIComponent(title);
-            const response = await fetch(apiUrl, {
-                headers: { Accept: "application/json" }
-            });
-
-            if (!response.ok) return null;
-
-            const data = await response.json();
-            // "extract" is the plain-text lead section; trim to ≤ 900 chars so
-            // the Story Notes block stays readable without becoming a wall of text.
+            const res = await fetch(apiUrl, { headers: { Accept: "application/json" } });
+            if (!res.ok) return null;
+            const data = await res.json();
             const raw = (data.extract || "").trim();
-            return raw.length > 20 ? raw.slice(0, 900) + (raw.length > 900 ? "…" : "") : null;
+            return raw.length > 20
+                ? raw.slice(0, 900) + (raw.length > 900 ? "…" : "")
+                : null;
         } catch {
             return null;
         }
@@ -214,25 +203,19 @@ LIMIT 5`;
             return null;
         }
 
-        const inceptionRaw = best.inception?.value;           // ISO 8601 or undefined
+        const inceptionRaw = best.inception?.value;
         const inceptionYear = inceptionRaw
             ? parseInt(inceptionRaw.slice(0, 4), 10)
             : null;
 
-        // Wikidata description text (e.g. "city in New York, United States")
-        // is stored separately so main.js can use it as a Story-Notes fallback
-        // for records where GNIS doesn't supply a history note.
+        // Start with the short Wikidata description; upgrade to a richer
+        // Wikipedia prose extract if we have a sitelink and the description
+        // is absent or a thin one-liner (≤ 60 chars).
         let description = best.itemDescription?.value || null;
-
-        // If we have a Wikipedia sitelink, try to get a richer prose extract.
-        // We prefer the Wikipedia extract when: (a) there is no GNIS detailNote,
-        // and (b) the Wikidata description is absent or short (≤ 60 chars).
         const articleUrl = best.article?.value || null;
         if (articleUrl && (!description || description.length <= 60)) {
             const extract = await fetchWikipediaExtract(articleUrl);
-            if (extract) {
-                description = extract;
-            }
+            if (extract) description = extract;
         }
 
         const result = {

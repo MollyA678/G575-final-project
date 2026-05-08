@@ -1520,7 +1520,6 @@ function buildGrid(width, height, step) {
 function renderTimelineChart(place) {
     const width = 760;
     const height = 175;
-    // Compact height so the chart+map both fit in the initial viewport.
     const padding = { top: 16, right: 24, bottom: 46, left: 52 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
@@ -1577,11 +1576,9 @@ function renderTimelineChart(place) {
     `;
 }
 
-// Show visible records as a direct kilometer histogram so distance reads as a continuous distribution.
 function renderDistanceChart(place, visibleContext) {
     const width = 760;
     const height = 190;
-    // Compact height so chart+map fit in the initial viewport.
     const padding = { top: 20, right: 30, bottom: 58, left: 54 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
@@ -1648,7 +1645,6 @@ function renderDistanceChart(place, visibleContext) {
 function renderRankChart(place, visibleContext) {
     const width = 760;
     const height = 175;
-    // Compact height to keep chart+map both visible on first load.
     const padding = { top: 20, right: 26, bottom: 48, left: 52 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
@@ -2940,8 +2936,7 @@ function renderDetails(origin, place) {
         : getTopState(place);
     const anchor = place.anchorRecord;
 
-    elements.detailCopy.textContent =
-        `${visibleContext.sourceNote.note} ${DATA.meta.sourceNote} ${DATA.meta.timeProxyNote}`;
+    elements.detailCopy.textContent = visibleContext.sourceNote.note;
 
     const metrics = [
         ["Origin group", origin.name],
@@ -2968,26 +2963,15 @@ function renderDetails(origin, place) {
 }
 
 function renderHeroAnnotations({ visibleCount, summaryText } = {}) {
-    // Populates the "Visible Records" card that lives in the bottom row
-    // beneath the map. The companion "How To Read This" card was removed —
-    // its content was migrated into the welcome modal so the map area can
-    // breathe and the bottom row holds three peer cards instead of two.
-    const metricEl  = document.getElementById("hero-records-metric");
-    const summaryEl = document.getElementById("hero-records-summary");
-
-    if (metricEl)  metricEl.textContent  = String(visibleCount ?? "—");
-    if (summaryEl) summaryEl.textContent = summaryText ?? "";
+    // Visible Records card removed — count now surfaces in the stat summary text.
+    // Keep function signature for call-site compatibility; update stat summary if present.
+    if (elements.statSummary && visibleCount !== undefined) {
+        // Don't overwrite statSummary here; renderStatChart owns it.
+    }
 }
 
 function clearHeroAnnotations() {
-    // Reset the Visible Records card to its placeholder state. Used during
-    // the guided state and on Global/Local views where "visible records"
-    // doesn't map cleanly onto the active visualization.
-    const metricEl  = document.getElementById("hero-records-metric");
-    const summaryEl = document.getElementById("hero-records-summary");
-
-    if (metricEl)  metricEl.textContent  = "—";
-    if (summaryEl) summaryEl.textContent = "Select a country and a place name to load records.";
+    // No-op: Visible Records card has been removed from the layout.
 }
 
 function renderGuidedState(step) {
