@@ -39,7 +39,17 @@
     const CACHE_PREFIX    = "wdAnchor:";
     const INTER_QUERY_MS  = 1000;   // polite delay between SPARQL calls
     const COORD_MATCH_KM  = 150;    // max distance to consider a GNIS record a match
-
+    const ORIGIN_COUNTRY_QIDS = {
+    England:     "Q145",  // United Kingdom
+    Germany:     "Q183",
+    Greece:      "Q41",
+    Spain:       "Q29",
+    Mexico:      "Q96",
+    France:      "Q142",
+    Italy:       "Q38",
+    Ireland:     "Q27",
+    Netherlands: "Q55"
+};
     // Promise exposed on window so main.js can await it before first render.
     let resolveReady;
     window.wikidataAnchorsReady = new Promise((res) => { resolveReady = res; });
@@ -232,6 +242,74 @@ LIMIT 5`;
         return result;
     }
 
+    
+async function fetchNamesakeInfo(placeName, originName) {
+    const cacheKey = `namesake:${originName}:${placeName}`;
+    const cached = cacheGet(cacheKey);
+    if (cached !== null) return cached;
+
+    const countryQID = ORIGIN_COUNTRY_QIDS[originName];
+    if (!countryQID) return null;
+
+    const safe = placeName.replace(/'/g, "\\'");
+    const query = `
+SELECT ?item ?itemLabel ?itemDescription ?article ?inception WHERE {
+  ?item rdfs:label "${safe}"@en .
+  ?item wdt:P17 wd:${countryQID} .
+  ?item wdt:P31/wdt:P279* wd:Q486972 .
+  OPTIONAL { ?item wdt:P571 ?inception . }
+  OPTIONAL {
+    ?article schema:about ?item ;
+             schema:isPartOf <https://en.wikipedia.org/> .
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+ORDER BY ASC(?inception)
+LIMIT 1`;
+
+    const url = SPARQL_ENDPOINT + "?format=json&query=" + encodeURIComponent(query);
+
+    try {
+        const response = await fetch(url, {
+            headers: { Accept: "application/sparql-results+json" }
+        });
+        if (!response.ok) throw new Error(`SPARQL HTTP ${response.status}`);
+
+        const data = await response.json();
+        const row  = data.results?.bindings?.[0];
+        if (!row) {
+            cacheSet(cacheKey, null);
+            return null;
+        }
+
+        let description = row.itemDescription?.value || null;
+        const articleUrl = row.article?.value || null;
+
+        // Wikidata's one-liner ("city in Germany") is rarely useful — promote
+        // to the Wikipedia lead extract whenever a sitelink is available.
+        if (articleUrl) {
+            const extract = await fetchWikipediaExtract(articleUrl);
+            if (extract) description = extract;
+        }
+
+        const namesake = {
+            wikidataId: row.item.value.split("/").pop(),
+            label:      row.itemLabel?.value || placeName,
+            description,
+            articleUrl
+        };
+
+        cacheSet(cacheKey, namesake);
+        return namesake;
+    } catch (err) {
+        console.warn(
+            `[wikidataAnchors] Namesake fetch failed for "${placeName}" (${originName}):`,
+            err.message
+        );
+        cacheSet(cacheKey, null);
+        return null;
+    }
+}
     // ── Patch a single place object ───────────────────────────────────────────
 
     function patchPlaceAnchor(place, wdResult) {
@@ -356,32 +434,45 @@ LIMIT 5`;
 
         // Collect all (originKey, place) pairs
         const pairs = [];
-        for (const [, origin] of Object.entries(DATA.origins)) {
+        for (const [originName, origin] of Object.entries(DATA.origins)) {
             for (const place of (origin.places || [])) {
-                pairs.push(place);
+                pairs.push({ originName, place });
             }
         }
 
         console.info(`[wikidataAnchors] Resolving ${pairs.length} place(s) via Wikidata SPARQL…`);
 
         for (let i = 0; i < pairs.length; i++) {
-            const place = pairs[i];
-            if (i > 0) await delay(INTER_QUERY_MS);   // be polite to the public endpoint
+            const { originName, place } = pairs[i];
+            if (i > 0) await delay(INTER_QUERY_MS);
 
-            try {
+        try {
                 const wdResult = await fetchWikidataResult(place.name);
                 if (wdResult) {
                     patchPlaceAnchor(place, wdResult);
                 } else {
-                    console.info(
-                        `[wikidataAnchors] No Wikidata result for "${place.name}" — keeping GNIS anchor.`
-                    );
+                    console.info(`[wikidataAnchors] No US Wikidata result for "${place.name}" — keeping GNIS anchor.`);
+                }
+
+        // Always also try to resolve the namesake in the origin country, so
+        // Story Notes have a meaningful fallback even when both GNIS and the
+        // US-side Wikidata description are empty.
+                await delay(300);
+                const namesake = await fetchNamesakeInfo(place.name, originName);
+                if (namesake?.description) {
+                    place.namesakeExtract     = namesake.description;
+                    place.namesakeWikidataId  = namesake.wikidataId;
+                    place.namesakeCountry     = originName;
+                    place.namesakeArticleUrl  = namesake.articleUrl || null;
+
+                    try {
+                        document.dispatchEvent(new CustomEvent("wikidata-anchor-updated", {
+                            detail: { placeId: place.id, placeName: place.name, hasNamesake: true }
+                        }));
+                    } catch { /* CustomEvent unavailable — silently skip */ }
                 }
             } catch (err) {
-                console.warn(
-                    `[wikidataAnchors] Failed to resolve "${place.name}":`, err.message,
-                    "— keeping original GNIS anchor."
-                );
+                console.warn(`[wikidataAnchors] Failed to resolve "${place.name}":`, err.message);
             }
         }
 

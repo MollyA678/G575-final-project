@@ -903,25 +903,36 @@ function buildSourceNoteContext(place, visiblePoints) {
     // a "wikidata-anchor-updated" event triggers a re-render so notes appear
     // as soon as the SPARQL response lands, even mid-session.
     const buildNote = (record, fallbackLabel) => {
-        if (record?.detailNote) return record.detailNote;
+    if (record?.detailNote) return record.detailNote;
 
-        const recordDesc = record?.wikidataDescription;
-        if (recordDesc) {
-            return `Wikidata describes ${record.label || fallbackLabel} as: ${recordDesc}. `
-                 + `GNIS does not include a history note for this record, so this fallback was sourced from Wikidata`
-                 + (record.wikidataId ? ` (Q${record.wikidataId})` : "")
-                 + ".";
-        }
+    const recordDesc = record?.wikidataDescription;
+    if (recordDesc) {
+        return `Wikidata describes ${record.label || fallbackLabel} as: ${recordDesc}. `
+             + `GNIS does not include a history note for this record, so this fallback was sourced from Wikidata`
+             + (record.wikidataId ? ` (Q${record.wikidataId})` : "")
+             + ".";
+    }
 
-        const placeDesc = place.wikidataDescription;
-        if (placeDesc) {
-            return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
-                 + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
-                 + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
-                 + ".";
-        }
+    const placeDesc = place.wikidataDescription;
+    if (placeDesc) {
+        return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
+             + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
+             + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
+             + ".";
+    }
 
-        return `GNIS does not include a description/history note for ${fallbackLabel}.`;
+    // Deepest fallback: the *original* namesake in the origin country
+    // (e.g. Berlin, Germany when the US Berlin lacks any record-, place-,
+    // or Wikidata-level description). Fetched by wikidataAnchors.js.
+    if (place.namesakeExtract) {
+        const where = place.namesakeCountry ? ` in ${place.namesakeCountry}` : "";
+        const qid   = place.namesakeWikidataId ? ` (Q${place.namesakeWikidataId})` : "";
+        return `GNIS does not include a description/history note for ${fallbackLabel}. `
+             + `For context on the namesake, the original "${place.name}"${where} is described `
+             + `on Wikipedia${qid} as: ${place.namesakeExtract}`;
+    }
+
+    return `GNIS does not include a description/history note for ${fallbackLabel}.`;
     };
 
     if (state.focusedState) {
@@ -2842,7 +2853,10 @@ function buildInsetLocalNetwork(origin, place) {
 }
 
 function renderNetworkEdge(edge, nodesById, context = "main") {
-    // Edges are rendered as layered ribbons plus short glowing strokes to echo the reference "light trail" aesthetic.
+    // Edges are rendered as layered ribbon + glow + core strokes (no particle dashes)
+    // so the local network reads as continuous light trails. State-bound edges adopt
+    // the same anchor-distance gradient the USA view uses for its routes; everything
+    // else (origin→selected, region hubs) renders as luminous white.
     const from = typeof edge.from === "string" ? nodesById.get(edge.from) : edge.from;
     const to = typeof edge.to === "string" ? nodesById.get(edge.to) : edge.to;
 
@@ -2851,76 +2865,38 @@ function renderNetworkEdge(edge, nodesById, context = "main") {
     }
 
     const distance = Math.hypot(to.x - from.x, to.y - from.y);
-    const baseCurve = context === "inset" ? (edge.primary ? 16 : 10) : (edge.primary ? 28 : 18);
+    const baseCurve = context === "inset" ? 16 : 28;
     const curveAmount = Math.min(
         baseCurve + distance * (context === "inset" ? 0.045 : 0.06),
         context === "inset" ? 30 : 54
     );
     const direction = seededUnit(edge.id || `${from.id}:${to.id}`) > 0.5 ? 1 : -1;
-    const geometry = getCurvedNetworkGeometry(from, to, curveAmount, direction);
-    const path = geometry.path;
-    const edgeColorSource = to.color || from.color || ORIGIN_NODE_COLOR;
-    const edgeColor = edge.primary
-        ? "rgba(248, 251, 255, 0.88)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.82 : 0.9);
-    const ribbonColor = edge.primary
-        ? "rgba(248, 251, 255, 0.15)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.12 : 0.14);
-    const glowColor = edge.primary
-        ? "rgba(248, 251, 255, 0.16)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.18 : 0.2);
-    const ribbonWidth = context === "inset" ? (edge.primary ? 8.2 : 6.4) : (edge.primary ? 11.4 : 8.8);
-    const glowWidth = context === "inset" ? (edge.primary ? 3.4 : 2.8) : (edge.primary ? 4.6 : 3.6);
-    const coreWidth = context === "inset" ? 0.42 : 0.5;
-    const particleColor = edge.primary
-        ? "rgba(255, 247, 240, 0.96)"
-        : colorWithAlpha(edgeColorSource, 0.96);
-    const particleGlowColor = edge.primary
-        ? "rgba(255, 247, 240, 0.16)"
-        : colorWithAlpha(edgeColorSource, 0.11);
-    const particles = buildTechTrailParticleDescriptors(edge.id || `${from.id}:${to.id}`, geometry, {
-        context,
-        primary: edge.primary,
-        distance
-    }).map((descriptor) => {
-        const segment = describeTrailSegment(geometry, descriptor);
-        return `
-            <g class="network-edge-particle-cluster" data-static-anchor-x="${segment.cx.toFixed(2)}" data-static-anchor-y="${segment.cy.toFixed(2)}" style="--spark-delay:${descriptor.delay.toFixed(2)}s">
-                <line class="network-edge-particle network-edge-particle--blur" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleGlowColor}" stroke-width="${(descriptor.thickness * 2.45).toFixed(2)}" stroke-linecap="round" opacity="${(descriptor.opacity * 0.28).toFixed(3)}"></line>
-                <line class="network-edge-particle" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleColor}" stroke-width="${descriptor.thickness.toFixed(2)}" stroke-linecap="round" opacity="${descriptor.opacity.toFixed(3)}"></line>
-            </g>
-        `;
-    }).join("");
+    const path = curvedNetworkPath(from, to, curveAmount, direction);
+
+    // Match USA-view styling: state edges = distance-mixed color, everything else = white.
+    const isStateEdge = to?.kind === "state";
+    const distanceSource = to.color || from.color || ORIGIN_NODE_COLOR;
+    const coreColor = isStateEdge
+        ? colorWithAlpha(distanceSource, context === "inset" ? 0.92 : 0.96)
+        : "rgba(248, 251, 255, 0.94)";
+    const glowColor = isStateEdge
+        ? colorWithAlpha(distanceSource, context === "inset" ? 0.22 : 0.26)
+        : "rgba(248, 251, 255, 0.22)";
+    const ribbonColor = isStateEdge
+        ? colorWithAlpha(distanceSource, context === "inset" ? 0.12 : 0.14)
+        : "rgba(248, 251, 255, 0.14)";
+
+    const ribbonWidth = context === "inset" ? 7.6 : 10.6;
+    const glowWidth = context === "inset" ? 3.0 : 4.2;
+    const coreWidth = context === "inset" ? 0.78 : 1.05;
     const tooltip = edge.tooltip || "";
 
     return `
         <g class="network-edge-bundle ${edge.primary ? "is-primary" : ""} ${context === "inset" ? "network-edge-bundle--inset" : ""}" ${tooltip ? `data-tooltip="${escapeAttr(tooltip)}"` : ""} ${renderLinkKeysAttr(edge.linkEntries)} ${renderFocusKeysAttr(edge.focusEntries)}>
-            <path
-                class="network-edge network-edge--ribbon ${edge.primary ? "is-primary" : ""}"
-                d="${path}"
-                style="stroke:${ribbonColor};stroke-width:${ribbonWidth}px"
-                aria-hidden="true"
-            ></path>
-            <path
-                class="network-edge-glow ${edge.primary ? "is-primary" : ""}"
-                d="${path}"
-                style="stroke:${glowColor};stroke-width:${glowWidth}px"
-                aria-hidden="true"
-            ></path>
-            <path
-                class="network-edge network-edge--core ${edge.primary ? "is-primary" : ""} ${context === "inset" ? "network-edge--inset" : ""}"
-                d="${path}"
-                style="stroke:${edgeColor};stroke-width:${coreWidth}px"
-                aria-hidden="true"
-            ></path>
-            <g class="network-edge-particles" aria-hidden="true">
-                ${particles}
-            </g>
-            <path
-                class="network-edge-hitarea"
-                d="${path}"
-                aria-hidden="true"
-            ></path>
+            <path class="network-edge network-edge--ribbon" d="${path}" style="stroke:${ribbonColor};stroke-width:${ribbonWidth}px" aria-hidden="true"></path>
+            <path class="network-edge-glow"               d="${path}" style="stroke:${glowColor};stroke-width:${glowWidth}px"     aria-hidden="true"></path>
+            <path class="network-edge network-edge--core" d="${path}" style="stroke:${coreColor};stroke-width:${coreWidth}px"     aria-hidden="true"></path>
+            <path class="network-edge-hitarea"            d="${path}" aria-hidden="true"></path>
         </g>
     `;
 }
