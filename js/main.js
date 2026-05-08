@@ -1429,30 +1429,69 @@ function renderWorldPolygons(origin, options = {}) {
         })
         .join("");
 
-    const countryLabels = SHAPES.global.countries
+    // Sub-national shapes (England, Scotland, Wales, etc.) exist in the basemap
+    // for polygon fidelity but should never get their own label — the parent
+    // country polygon (United Kingdom) carries the label instead.
+    const SUPPRESS_LABEL = new Set([
+        "England", "Scotland", "Wales", "Northern Ireland",
+        "Catalonia", "Flanders", "Wallonia", "Bavaria"
+    ]);
+
+    // Approximate character-width in SVG units at font-size 13 (used for AABB collision)
+    const CHAR_W = 7.8;
+    const LABEL_H = 16;
+    const LABEL_PAD_X = 6;
+    const LABEL_PAD_Y = 4;
+
+    // Collect candidate labels sorted so origin/current-origin labels win over others
+    const candidates = SHAPES.global.countries
         .filter((country) => {
+            if (SUPPRESS_LABEL.has(country.name)) return false;
             const mappedOrigin = COUNTRY_ORIGIN_LOOKUP[country.name];
             const isCurrentOrigin = country.name === originCountry;
-            // Only label countries that are selectable origin groups, the current origin,
-            // or the USA. Drop Canada and any others that just add overlap noise.
             return mappedOrigin || isCurrentOrigin || country.name === "United States of America";
         })
         .map((country) => {
             const mappedOrigin = COUNTRY_ORIGIN_LOOKUP[country.name];
             const isCurrentOrigin = country.name === originCountry;
-            // When England is selected the polygon is "United Kingdom" — show the
-            // origin name ("England") rather than the formal country name so the
-            // map label matches what the Browse panel calls it.
+            const isSelected = mappedOrigin === origin.name;
             const label = country.name === "United States of America"
                 ? "USA"
                 : (isCurrentOrigin && origin.name !== country.name)
                     ? origin.name
                     : (mappedOrigin || country.name);
             const tooltip = mappedOrigin
-                ? `${mappedOrigin} origin group${mappedOrigin === origin.name ? " (selected)" : ""} · click to select`
+                ? `${mappedOrigin} origin group${isSelected ? " (selected)" : ""} · click to select`
                 : label;
+            // Priority: current origin first, then other selectables, then USA
+            const priority = isCurrentOrigin ? 0 : (mappedOrigin ? 1 : 2);
 
-            return `
+            return { country, mappedOrigin, isCurrentOrigin, isSelected, label, tooltip, priority };
+        })
+        .sort((a, b) => a.priority - b.priority);
+
+    // Greedy collision pass: place labels highest-priority first, drop any that
+    // overlap an already-placed label's bounding box.
+    const placed = [];
+    const visibleCandidates = candidates.filter((c) => {
+        const lx = c.country.label.x;
+        const ly = c.country.label.y;
+        const halfW = (c.label.length * CHAR_W) / 2 + LABEL_PAD_X;
+        const halfH = LABEL_H / 2 + LABEL_PAD_Y;
+        const box = { x1: lx - halfW, y1: ly - halfH, x2: lx + halfW, y2: ly + halfH };
+
+        const overlaps = placed.some((p) =>
+            box.x1 < p.x2 && box.x2 > p.x1 && box.y1 < p.y2 && box.y2 > p.y1
+        );
+        if (!overlaps) {
+            placed.push(box);
+            return true;
+        }
+        return false;
+    });
+
+    const countryLabels = visibleCandidates
+        .map(({ country, mappedOrigin, isCurrentOrigin, label, tooltip }) => `
                 <text
                     class="country-label ${isCurrentOrigin ? "is-origin" : ""} ${mappedOrigin ? "is-selectable" : ""}"
                     x="${country.label.x}"
@@ -1466,8 +1505,7 @@ function renderWorldPolygons(origin, options = {}) {
                     ${isCurrentOrigin ? renderLinkKeysAttr([["origin", origin.id]]) : ""}
                     ${isCurrentOrigin ? renderFocusKeysAttr([["focus-origin", origin.id]]) : ""}
                 >${label}</text>
-            `;
-        })
+        `)
         .join("");
 
     return `${countryPaths}<g class="map-label-layer">${countryLabels}</g>`;
