@@ -57,6 +57,69 @@ const REGION_COLORS = {
     west: "#c67bff"
 };
 
+const STATEHOOD_YEAR = {
+    Alabama: 1819,
+    Arizona: 1912,
+    Arkansas: 1836,
+    California: 1850,
+    Colorado: 1876,
+    Connecticut: 1788,
+    Delaware: 1787,
+    Florida: 1845,
+    Georgia: 1788,
+    Idaho: 1890,
+    Illinois: 1818,
+    Indiana: 1816,
+    Iowa: 1846,
+    Kansas: 1861,
+    Kentucky: 1792,
+    Louisiana: 1812,
+    Maine: 1820,
+    Maryland: 1788,
+    Massachusetts: 1788,
+    Michigan: 1837,
+    Minnesota: 1858,
+    Mississippi: 1817,
+    Missouri: 1821,
+    Montana: 1889,
+    Nebraska: 1867,
+    Nevada: 1864,
+    "New Hampshire": 1788,
+    "New Jersey": 1787,
+    "New Mexico": 1912,
+    "New York": 1788,
+    "North Carolina": 1789,
+    "North Dakota": 1889,
+    Ohio: 1803,
+    Oklahoma: 1907,
+    Oregon: 1859,
+    Pennsylvania: 1787,
+    "Rhode Island": 1790,
+    "South Carolina": 1788,
+    "South Dakota": 1889,
+    Tennessee: 1796,
+    Texas: 1845,
+    Utah: 1896,
+    Vermont: 1791,
+    Virginia: 1788,
+    Washington: 1889,
+    "West Virginia": 1863,
+    Wisconsin: 1848,
+    Wyoming: 1890
+};
+
+const TIME_COLOR_STOPS = [
+    { t: 0, color: "#6ef2ff" },
+    { t: 0.34, color: "#7f9bff" },
+    { t: 0.68, color: "#d65dff" },
+    { t: 1, color: "#ff9a5c" }
+];
+
+const PROXY_YEAR_EXTENT = {
+    min: Math.min(...Object.values(STATEHOOD_YEAR)),
+    max: Math.max(...Object.values(STATEHOOD_YEAR))
+};
+
 const ORIGIN_NODE_COLOR = "#f6fbff";
 
 const MAP_VIEWBOX = {
@@ -337,6 +400,22 @@ function mixColors(colorA, colorB, t, alpha = 1) {
     const g = Math.round(start.g + (end.g - start.g) * ratio);
     const b = Math.round(start.b + (end.b - start.b) * ratio);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function sampleContinuousColorRamp(stops, t, alpha = 1) {
+    const ratio = clamp(t, 0, 1);
+
+    for (let index = 0; index < stops.length - 1; index += 1) {
+        const current = stops[index];
+        const next = stops[index + 1];
+
+        if (ratio <= next.t) {
+            const localRatio = (ratio - current.t) / Math.max(next.t - current.t, 0.0001);
+            return mixColors(current.color, next.color, localRatio, alpha);
+        }
+    }
+
+    return colorWithAlpha(stops[stops.length - 1].color, alpha);
 }
 
 // Standard FNV-1a 32-bit hash
@@ -709,6 +788,24 @@ function inferDistanceBand(distanceKm) {
 
 function getReferenceDistanceKm(point) {
     return point.referenceDistanceKm ?? point.distanceKm ?? 0;
+}
+
+function getStateProxyYear(stateName) {
+    return STATEHOOD_YEAR[stateName] ?? null;
+}
+
+function normalizeProxyYear(year, extent = PROXY_YEAR_EXTENT) {
+    if (!Number.isFinite(year)) {
+        return 0.5;
+    }
+
+    const min = extent?.min ?? PROXY_YEAR_EXTENT.min;
+    const max = extent?.max ?? PROXY_YEAR_EXTENT.max;
+    return clamp((year - min) / Math.max(max - min, 1), 0, 1);
+}
+
+function getProxyYearColor(year, alpha = 0.96, extent = PROXY_YEAR_EXTENT) {
+    return sampleContinuousColorRamp(TIME_COLOR_STOPS, normalizeProxyYear(year, extent), alpha);
 }
 
 function getReferenceAnchorRecord(place) {
@@ -1527,6 +1624,7 @@ function renderTimelineChart(place) {
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const points = place.timelinePoints;
+    const gradientId = `timeline-gradient-${place.id}`;
     // Add a couple of units above the highest value so the line never grazes the top of the plot frame
     const maxValue = Math.max(...points.map((point) => point.value), 1) + 2;
 
@@ -1544,6 +1642,9 @@ function renderTimelineChart(place) {
     // Show roughly 8 year labels along the x-axis regardless of how many timeline points there are
     const labelEvery = Math.max(1, Math.ceil(points.length / 8));
     const highlighted = scaledPoints[Math.max(0, scaledPoints.length - 1)];
+    const gradientStops = TIME_COLOR_STOPS
+        .map((stop) => `<stop offset="${Math.round(stop.t * 100)}%" stop-color="${stop.color}"></stop>`)
+        .join("");
 
     const filterNote = hasActiveDataFilters()
         ? "Filters update the maps and linked networks. This timeline remains a full-name proxy summary."
@@ -1551,19 +1652,37 @@ function renderTimelineChart(place) {
 
     return `
         <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Timeline chart">
+            <defs>
+                <linearGradient id="${gradientId}" x1="${padding.left}" y1="0" x2="${width - padding.right}" y2="0" gradientUnits="userSpaceOnUse">
+                    ${gradientStops}
+                </linearGradient>
+            </defs>
             <rect class="plot-surface" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="24"></rect>
+            <rect class="plot-frame-inner" x="${padding.left}" y="${padding.top}" width="${innerWidth}" height="${innerHeight}" rx="18"></rect>
             ${buildGrid(width, height, 90)}
             <line class="grid-line" x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}"></line>
             <line class="grid-line" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + innerHeight}"></line>
-            <path class="timeline-line" d="${path}"></path>
+            <path class="timeline-line timeline-line--ribbon" d="${path}" stroke="url(#${gradientId})"></path>
+            <path class="timeline-line timeline-line--glow" d="${path}" stroke="url(#${gradientId})"></path>
+            <path class="timeline-line timeline-line--core" d="${path}" stroke="url(#${gradientId})"></path>
             ${scaledPoints
-                .map((point, index) => `
-                    <circle class="timeline-point ${index === scaledPoints.length - 1 ? "is-highlight" : ""}" cx="${point.x}" cy="${point.y}" r="${index === scaledPoints.length - 1 ? 7 : 4.5}"></circle>
-                    ${index % labelEvery === 0 || index === scaledPoints.length - 1
-                        ? `<text class="chart-note" x="${point.x}" y="${height - 26}" text-anchor="middle">${point.year}</text>`
-                        : ""
-                    }
-                `)
+                .map((point, index) => {
+                    const t = scaledPoints.length > 1 ? index / (scaledPoints.length - 1) : 0;
+                    const pointColor = sampleContinuousColorRamp(TIME_COLOR_STOPS, t, 0.98);
+                    const isHighlight = index === scaledPoints.length - 1;
+                    const glowRadius = isHighlight ? 12.6 : 8.4;
+                    const ringRadius = isHighlight ? 6.4 : 4.4;
+                    const coreRadius = isHighlight ? 3.6 : 2.6;
+                        return `
+                        <circle class="timeline-point-glow ${isHighlight ? "is-highlight" : ""}" cx="${point.x}" cy="${point.y}" r="${glowRadius}" fill="${pointColor}"></circle>
+                        <circle class="timeline-point-ring ${isHighlight ? "is-highlight" : ""}" cx="${point.x}" cy="${point.y}" r="${ringRadius}" stroke="${pointColor}"></circle>
+                        <circle class="timeline-point-core ${isHighlight ? "is-highlight" : ""}" cx="${point.x}" cy="${point.y}" r="${coreRadius}" fill="${pointColor}"></circle>
+                        ${index % labelEvery === 0 || isHighlight
+                            ? `<text class="chart-note" x="${point.x}" y="${height - 26}" text-anchor="middle">${point.year}</text>`
+                            : ""
+                        }
+                    `;
+                })
                 .join("")}
             ${[0, Math.round(maxValue / 2), maxValue]
                 .map((tick) => {
@@ -1571,9 +1690,8 @@ function renderTimelineChart(place) {
                     return `<text class="chart-note" x="${padding.left - 12}" y="${y + 4}" text-anchor="end">${tick}</text>`;
                 })
                 .join("")}
-            <text class="axis-label" x="${padding.left}" y="18">Cumulative count</text>
-            <!-- Bottom axis title: y was height+1 (BELOW SVG bottom, fully clipped); now inside the SVG with room for descenders -->
-            <text class="axis-label" x="${width - padding.right}" y="${height - 8}" text-anchor="end">Statehood year proxy</text>
+            <text class="axis-label chart-axis-strong" x="${padding.left}" y="18">Cumulative count</text>
+            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 8}" text-anchor="end">Statehood year proxy</text>
             <text class="chart-note" x="${highlighted.x + 10}" y="${highlighted.y - 12}">${filterNote}</text>
         </svg>
     `;
@@ -1748,13 +1866,15 @@ function buildRegionCountMap(points) {
 
 function buildStateDistanceMap(points) {
     return points.reduce((memo, point) => {
+        const proxyYear = getStateProxyYear(point.state);
         const entry = memo.get(point.state) || {
             state: point.state,
             count: 0,
             totalDistanceKm: 0,
             minDistanceKm: Number.POSITIVE_INFINITY,
             maxDistanceKm: 0,
-            region: point.region
+            region: point.region,
+            proxyYear
         };
 
         entry.count += 1;
@@ -1762,6 +1882,7 @@ function buildStateDistanceMap(points) {
         entry.minDistanceKm = Math.min(entry.minDistanceKm, getReferenceDistanceKm(point));
         entry.maxDistanceKm = Math.max(entry.maxDistanceKm, getReferenceDistanceKm(point));
         entry.region = point.region;
+        entry.proxyYear = proxyYear ?? entry.proxyYear;
         memo.set(point.state, entry);
         return memo;
     }, new Map());
@@ -1787,6 +1908,21 @@ function buildDistanceStateEntries(points) {
             entryB.count - entryA.count ||
             entryA.state.localeCompare(entryB.state)
         );
+}
+
+function buildProxyYearExtent(entries) {
+    const years = entries
+        .map((entry) => entry.proxyYear)
+        .filter((year) => Number.isFinite(year));
+
+    if (!years.length) {
+        return { min: 0, max: 1 };
+    }
+
+    return {
+        min: Math.min(...years),
+        max: Math.max(...years)
+    };
 }
 
 // Keep the legacy short/medium/long summary available for older text copy while newer charts use direct bins.
@@ -1849,6 +1985,7 @@ function buildVisibleContext(place) {
     const stateCounts = buildStateCountMap(visiblePoints);
     const regionCounts = buildRegionCountMap(visiblePoints);
     const distanceStateEntries = buildDistanceStateEntries(visiblePoints);
+    const proxyYearExtent = buildProxyYearExtent(distanceStateEntries);
     const distanceHistogram = buildDistanceHistogram(visiblePoints);
     const distanceBars = buildDistanceBars(visiblePoints);
 
@@ -1875,6 +2012,7 @@ function buildVisibleContext(place) {
         topStates,
         topRegions,
         distanceStateEntries,
+        proxyYearExtent,
         distanceHistogram,
         distanceBars,
         rankPoints,
@@ -2114,6 +2252,8 @@ function renderGlobalView(origin, place) {
     const placeLinkEntries = [["place", place.id], ["origin", origin.id]];
     const originLinkEntries = [["origin", origin.id]];
     const clipId = "map-clip-global-main";
+    const anchorProxyYear = getStateProxyYear(place.anchorRecord.state);
+    const routeTimeColor = getProxyYearColor(anchorProxyYear, 0.96, visibleContext.proxyYearExtent);
 
     return `
         <div class="viz-layout viz-layout--global">
@@ -2134,9 +2274,9 @@ function renderGlobalView(origin, place) {
                         <g class="map-overlay-layer" data-map-overlay-layer="global">
                             ${renderOverlayTechTrail("global", origin.anchor, place.globalTarget, 132, {
                                 seedKey: `global:${origin.id}:${place.id}`,
-                                color: "rgba(245, 250, 255, 0.96)",
-                                glowColor: colorWithAlpha(origin.accent, 0.26),
-                                ribbonColor: colorWithAlpha(origin.accent, 0.12),
+                                color: routeTimeColor,
+                                glowColor: colorWithAlpha(routeTimeColor, 0.28),
+                                ribbonColor: colorWithAlpha(routeTimeColor, 0.12),
                                 tooltip: `Global route from ${origin.name} to ${place.name}`,
                                 linkEntries: placeLinkEntries,
                                 focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]],
@@ -2162,7 +2302,7 @@ function renderGlobalView(origin, place) {
                                 lean: 0.04,
                                 ringRadius: 1.55,
                                 coreRadius: 0.84,
-                                color: colorWithAlpha(origin.accent, 0.94),
+                                color: routeTimeColor,
                                 tooltip: place.label,
                                 linkEntries: placeLinkEntries,
                                 focusEntries: [["focus-selected-place", place.id]]
@@ -2208,9 +2348,8 @@ function renderUsaView(origin, place) {
     const { visiblePoints, stateCounts } = visibleContext;
     const activeStates = new Set(visiblePoints.map((point) => point.state));
     const clipId = "map-clip-usa-main";
-    const maxDistanceKm = Math.max(1, ...visiblePoints.map((point) => getReferenceDistanceKm(point)));
-    const getDistanceColor = (distanceKm) =>
-        mixColors("#63ebff", "#ff4fb8", (distanceKm || 0) / maxDistanceKm, 0.96);
+    const getRouteTimeColor = (point) =>
+        getProxyYearColor(getStateProxyYear(point.state), 0.96, visibleContext.proxyYearExtent);
 
     // The "Visible Records" card lives permanently below the map. It used
     // to render inside the USA map's annotation row; promoting it to the
@@ -2227,12 +2366,12 @@ function renderUsaView(origin, place) {
                 return "";
             }
             const target = { x: point.x, y: point.y };
-            const distanceColor = getDistanceColor(getReferenceDistanceKm(point));
+            const routeTimeColor = getRouteTimeColor(point);
             return renderOverlayTechTrail("usa", hub, target, 74, {
                 seedKey: `usa:${point.id}`,
-                color: distanceColor,
-                glowColor: colorWithAlpha(distanceColor, 0.22),
-                ribbonColor: colorWithAlpha(distanceColor, 0.08),
+                color: routeTimeColor,
+                glowColor: colorWithAlpha(routeTimeColor, 0.24),
+                ribbonColor: colorWithAlpha(routeTimeColor, 0.1),
                 tooltip: `${anchorRecord.label} to ${point.label}`,
                 linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
                 focusEntries: [["focus-route", point.id]],
@@ -2251,7 +2390,7 @@ function renderUsaView(origin, place) {
                 lean: point.isAnchorRecord ? 0.02 : -0.05,
                 ringRadius: point.isAnchorRecord ? 1.7 : 1.38,
                 coreRadius: point.isAnchorRecord ? 0.92 : 0.72,
-                color: point.isAnchorRecord ? "rgba(246,251,255,0.98)" : getDistanceColor(getReferenceDistanceKm(point)),
+                color: point.isAnchorRecord ? "rgba(246,251,255,0.98)" : getRouteTimeColor(point),
                 tooltip: point.isAnchorRecord ? `${anchorRecord.label} · selected anchor record` : point.tooltip,
                 linkEntries: [["place", place.id], ["state", point.state], ["region", point.region], ["origin", origin.id]],
                 focusEntries: [["focus-point", point.id]]
@@ -2374,6 +2513,7 @@ function buildLocalNetwork(origin, place) {
             avgDistanceKm: entry.avgDistanceKm,
             minDistanceKm: entry.minDistanceKm,
             maxDistanceKm: entry.maxDistanceKm,
+            proxyYear: entry.proxyYear,
             tooltip: "",
             linkEntries: [["state", entry.state], ["place", place.id], ["origin", origin.id]],
             focusEntries: [["focus-state", entry.state]]
@@ -2401,7 +2541,8 @@ function buildLocalNetwork(origin, place) {
         from: "selected",
         to: node.id,
         primary: true,
-        tooltip: "",
+        color: getProxyYearColor(node.proxyYear, 0.94, visibleContext.proxyYearExtent),
+        tooltip: node.proxyYear ? `${node.state} · proxy year ${node.proxyYear}` : "",
         linkEntries: node.linkEntries,
         focusEntries: [["focus-edge", `selected-state:${node.state}`]]
     }));
@@ -2486,6 +2627,7 @@ function buildInsetLocalNetwork(origin, place) {
             count: entry.count,
             state: entry.state,
             avgDistanceKm: entry.avgDistanceKm,
+            proxyYear: entry.proxyYear,
             tooltip: "",
             linkEntries: [["state", entry.state], ["place", place.id], ["origin", origin.id]],
             focusEntries: [["focus-state", entry.state]]
@@ -2512,7 +2654,8 @@ function buildInsetLocalNetwork(origin, place) {
             from: "selected",
             to: node.id,
             primary: true,
-            tooltip: "",
+            color: getProxyYearColor(node.proxyYear, 0.94, visibleContext.proxyYearExtent),
+            tooltip: node.proxyYear ? `${node.state} · proxy year ${node.proxyYear}` : "",
             linkEntries: node.linkEntries,
             focusEntries: [["focus-edge", `selected-state:${node.state}`]]
         }))
@@ -2522,7 +2665,7 @@ function buildInsetLocalNetwork(origin, place) {
 }
 
 function renderNetworkEdge(edge, nodesById, context = "main") {
-    // Edges are rendered as layered ribbons plus short glowing strokes to echo the reference "light trail" aesthetic.
+    // Network edges use a continuous layered ribbon so the local view matches the smoother route language on the maps.
     const from = typeof edge.from === "string" ? nodesById.get(edge.from) : edge.from;
     const to = typeof edge.to === "string" ? nodesById.get(edge.to) : edge.to;
 
@@ -2539,38 +2682,13 @@ function renderNetworkEdge(edge, nodesById, context = "main") {
     const direction = seededUnit(edge.id || `${from.id}:${to.id}`) > 0.5 ? 1 : -1;
     const geometry = getCurvedNetworkGeometry(from, to, curveAmount, direction);
     const path = geometry.path;
-    const edgeColorSource = to.color || from.color || ORIGIN_NODE_COLOR;
-    const edgeColor = edge.primary
-        ? "rgba(248, 251, 255, 0.88)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.82 : 0.9);
-    const ribbonColor = edge.primary
-        ? "rgba(248, 251, 255, 0.15)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.12 : 0.14);
-    const glowColor = edge.primary
-        ? "rgba(248, 251, 255, 0.16)"
-        : colorWithAlpha(edgeColorSource, context === "inset" ? 0.18 : 0.2);
+    const edgeColorSource = edge.color || to.color || from.color || ORIGIN_NODE_COLOR;
+    const edgeColor = colorWithAlpha(edgeColorSource, edge.primary ? 0.96 : (context === "inset" ? 0.82 : 0.9));
+    const ribbonColor = colorWithAlpha(edgeColorSource, edge.primary ? 0.18 : (context === "inset" ? 0.12 : 0.14));
+    const glowColor = colorWithAlpha(edgeColorSource, edge.primary ? 0.26 : (context === "inset" ? 0.18 : 0.2));
     const ribbonWidth = context === "inset" ? (edge.primary ? 8.2 : 6.4) : (edge.primary ? 11.4 : 8.8);
     const glowWidth = context === "inset" ? (edge.primary ? 3.4 : 2.8) : (edge.primary ? 4.6 : 3.6);
     const coreWidth = context === "inset" ? 0.42 : 0.5;
-    const particleColor = edge.primary
-        ? "rgba(255, 247, 240, 0.96)"
-        : colorWithAlpha(edgeColorSource, 0.96);
-    const particleGlowColor = edge.primary
-        ? "rgba(255, 247, 240, 0.16)"
-        : colorWithAlpha(edgeColorSource, 0.11);
-    const particles = buildTechTrailParticleDescriptors(edge.id || `${from.id}:${to.id}`, geometry, {
-        context,
-        primary: edge.primary,
-        distance
-    }).map((descriptor) => {
-        const segment = describeTrailSegment(geometry, descriptor);
-        return `
-            <g class="network-edge-particle-cluster" data-static-anchor-x="${segment.cx.toFixed(2)}" data-static-anchor-y="${segment.cy.toFixed(2)}" style="--spark-delay:${descriptor.delay.toFixed(2)}s">
-                <line class="network-edge-particle network-edge-particle--blur" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleGlowColor}" stroke-width="${(descriptor.thickness * 2.45).toFixed(2)}" stroke-linecap="round" opacity="${(descriptor.opacity * 0.28).toFixed(3)}"></line>
-                <line class="network-edge-particle" x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" stroke="${particleColor}" stroke-width="${descriptor.thickness.toFixed(2)}" stroke-linecap="round" opacity="${descriptor.opacity.toFixed(3)}"></line>
-            </g>
-        `;
-    }).join("");
     const tooltip = edge.tooltip || "";
 
     return `
@@ -2593,9 +2711,6 @@ function renderNetworkEdge(edge, nodesById, context = "main") {
                 style="stroke:${edgeColor};stroke-width:${coreWidth}px"
                 aria-hidden="true"
             ></path>
-            <g class="network-edge-particles" aria-hidden="true">
-                ${particles}
-            </g>
             <path
                 class="network-edge-hitarea"
                 d="${path}"
@@ -2772,25 +2887,27 @@ function renderLocalInset(origin, place, contextLabel) {
             </div>
 
             <div class="local-inset-card__content">
-                <svg class="local-inset-svg interactive-map" data-map-svg="${panZoomType}" viewBox="0 0 480 290" role="img" aria-label="Linked local inset">
-                    <defs>
-                        <clipPath id="${clipId}">
-                            <rect x="6" y="6" width="468" height="278" rx="22"></rect>
-                        </clipPath>
-                    </defs>
-                    <rect class="map-surface" x="6" y="6" width="468" height="278" rx="22"></rect>
-                    <g clip-path="url(#${clipId})">
-                        <g class="map-zoom-layer" data-map-zoom-layer="${panZoomType}" transform="${getMapTransformString(panZoomType)}">
-                            ${network.edges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
-                            ${network.nodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                <div class="local-inset-card__viewport">
+                    <svg class="local-inset-svg interactive-map" data-map-svg="${panZoomType}" viewBox="0 0 480 290" role="img" aria-label="Linked local inset">
+                        <defs>
+                            <clipPath id="${clipId}">
+                                <rect x="6" y="6" width="468" height="278" rx="22"></rect>
+                            </clipPath>
+                        </defs>
+                        <rect class="map-surface" x="6" y="6" width="468" height="278" rx="22"></rect>
+                        <g clip-path="url(#${clipId})">
+                            <g class="map-zoom-layer" data-map-zoom-layer="${panZoomType}" transform="${getMapTransformString(panZoomType)}">
+                                ${network.edges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
+                                ${network.nodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                            </g>
                         </g>
-                    </g>
-                    ${
-                        !network.visibleCount
-                            ? `<text class="chart-note" x="240" y="270" text-anchor="middle">No visible state links under the current filters.</text>`
-                            : ""
-                    }
-                </svg>
+                        ${
+                            !network.visibleCount
+                                ? `<text class="chart-note" x="240" y="270" text-anchor="middle">No visible state links under the current filters.</text>`
+                                : ""
+                        }
+                    </svg>
+                </div>
             </div>
         </aside>
     `;
@@ -2877,7 +2994,7 @@ function renderLocalView(origin, place) {
                                     ${network.nodes.map((node) => renderLocalNetworkNode(node)).join("")}
                                 </g>
                             </g>
-                            <text class="chart-note" x="48" y="540">Top: origin group. Center: selected name anchored to ${place.anchorRecord.label}. Outer state nodes spread by average anchor distance, and each label shows mean kilometers plus visible count.</text>
+                            <text class="chart-note" x="48" y="540">Top: origin group. Center: selected name anchored to ${place.anchorRecord.label}. Outer state nodes spread by average anchor distance, while state edges use a continuous proxy-year color ramp.</text>
                             ${
                                 !network.visibleCount
                                     ? `<text class="chart-note" x="500" y="500" text-anchor="middle">Current filters remove all visible state links for this name.</text>`
@@ -2889,15 +3006,23 @@ function renderLocalView(origin, place) {
                     <div class="community-legend">
                         <span class="community-chip" style="--chip-color:#63ebff">
                             <span class="community-chip__dot"></span>
-                            <span>nearer-to-anchor states</span>
+                            <span>nodes: nearer-to-anchor states</span>
                         </span>
                         <span class="community-chip" style="--chip-color:#ff4fb8">
                             <span class="community-chip__dot"></span>
-                            <span>farther-from-anchor states</span>
+                            <span>nodes: farther-from-anchor states</span>
+                        </span>
+                        <span class="community-chip" style="--chip-color:#6ef2ff">
+                            <span class="community-chip__dot"></span>
+                            <span>edges: earlier proxy year</span>
+                        </span>
+                        <span class="community-chip" style="--chip-color:#ff9a5c">
+                            <span class="community-chip__dot"></span>
+                            <span>edges: later proxy year</span>
                         </span>
                         <span class="community-chip community-chip--wide" style="--chip-color:rgba(244,250,255,0.92)">
                             <span class="community-chip__dot"></span>
-                            <span>one edge = one state with visible records</span>
+                            <span>one edge = one visible state connection</span>
                         </span>
                     </div>
                 </div>
