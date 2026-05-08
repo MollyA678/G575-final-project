@@ -487,10 +487,8 @@ button {
 
 /* Statistic cards use the same dark frame, but with extra breathing room for SVG plots. */
 .chart-frame {
-    /* min-height 240 → 220 and padding 14 → 10: the SVG inside uses a viewBox
-       so it scales to its container; shrinking the frame compresses the
-       chart without losing legibility. */
-    min-height: 220px;
+    /* Reduced to match compact chart SVG heights (175–190px + 10px padding) */
+    min-height: 160px;
     border-radius: 28px;
     padding: 10px;
     background:
@@ -937,15 +935,14 @@ button {
     top: 0;
     left: 0;
     z-index: 4;
-    width: 382px;
-    padding: 14px;
-    border: 1px solid rgba(106, 161, 235, 0.18);
-    border-radius: 24px;
+    width: 372px;
+    padding: 12px;
+    border: 1px solid rgba(116, 182, 255, 0.22);
+    border-radius: 18px;
     background:
-        radial-gradient(circle at 50% 0%, rgba(85, 231, 255, 0.1), transparent 34%),
-        radial-gradient(circle at 100% 100%, rgba(255, 79, 159, 0.05), transparent 28%),
-        linear-gradient(180deg, rgba(6, 11, 20, 0.96), rgba(2, 5, 11, 0.98));
-    box-shadow: var(--panel-glow);
+        radial-gradient(circle at top, rgba(85, 231, 255, 0.11), transparent 34%),
+        linear-gradient(180deg, rgba(9, 15, 30, 0.95), rgba(4, 8, 17, 0.96));
+    box-shadow: 0 0 0 1px rgba(112, 183, 255, 0.08), 0 0 42px rgba(38, 203, 255, 0.1), 0 24px 68px rgba(0, 0, 0, 0.52);
     backdrop-filter: blur(16px);
     transform-origin: top left;
     touch-action: none;
@@ -962,7 +959,7 @@ button {
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     cursor: grab;
 }
 
@@ -985,48 +982,39 @@ button {
 .local-inset-card__actions {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
 }
 
 .local-inset-card__readout {
-    min-width: 58px;
-    padding: 0 6px;
+    min-width: 52px;
     text-align: center;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 800;
-    color: var(--muted);
+    color: #d5ebff;
     font-family: "SF Mono", "Menlo", "Monaco", monospace;
     letter-spacing: 0.08em;
 }
 
 .local-inset-card__action {
-    min-width: 38px;
-    height: 38px;
-    padding: 0 12px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
     border: 1px solid rgba(106, 161, 235, 0.16);
-    border-radius: 12px;
-    background: rgba(14, 22, 37, 0.92);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(17, 27, 43, 0.96), rgba(10, 16, 28, 0.98));
     color: var(--ink);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 18px rgba(85, 231, 255, 0.06);
-    transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
 }
 
 .local-inset-card__action--wide {
-    min-width: 64px;
+    min-width: 58px;
 }
 
 .local-inset-card__action--toggle {
-    min-width: 38px;
+    min-width: 36px;
     font-size: 1.1rem;
-}
-
-.local-inset-card__action:hover,
-.local-inset-card__action:focus-visible {
-    transform: translateY(-1px);
-    border-color: var(--accent-strong);
-    background: rgba(18, 27, 44, 0.98);
 }
 
 .local-inset-svg {
@@ -1039,41 +1027,8 @@ button {
     display: block;
 }
 
-.local-inset-card__viewport {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(106, 161, 235, 0.16);
-    border-radius: 22px;
-    background:
-        radial-gradient(circle at 50% 0%, rgba(85, 231, 255, 0.08), transparent 36%),
-        radial-gradient(circle at 100% 100%, rgba(255, 79, 159, 0.05), transparent 26%),
-        linear-gradient(180deg, rgba(6, 11, 20, 0.96), rgba(2, 5, 11, 0.98));
-    box-shadow: inset 0 0 0 1px rgba(134, 192, 255, 0.12), inset 0 0 32px rgba(85, 231, 255, 0.06), 0 0 28px rgba(85, 231, 255, 0.04);
-}
-
-.local-inset-card__viewport::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(rgba(73, 103, 156, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(73, 103, 156, 0.08) 1px, transparent 1px);
-    background-size: 84px 84px;
-    opacity: 0.42;
-    pointer-events: none;
-}
-
-.local-inset-card__viewport::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 22px;
-    box-shadow: inset 0 0 0 1px rgba(134, 192, 255, 0.14), inset 0 0 42px rgba(85, 231, 255, 0.08), inset 0 -20px 52px rgba(0, 0, 0, 0.22);
-    pointer-events: none;
-}
-
 .local-inset-card.is-collapsed {
-    width: 68px;
+    width: 62px;
     padding: 10px;
 }
 
@@ -1448,25 +1403,11 @@ button {
 /* Chart surfaces share the same neon frame language as the maps, but with calmer marks for readability. */
 .timeline-line {
     fill: none;
+    stroke: var(--accent);
+    stroke-width: 3.4;
     stroke-linejoin: round;
     stroke-linecap: round;
-}
-
-.timeline-line--ribbon {
-    stroke-width: 11.5;
-    opacity: 0.16;
-    filter: blur(1.8px);
-}
-
-.timeline-line--glow {
-    stroke-width: 4.8;
-    opacity: 0.56;
-    filter: drop-shadow(0 0 12px rgba(110, 242, 255, 0.18));
-}
-
-.timeline-line--core {
-    stroke-width: 2.4;
-    opacity: 0.94;
+    filter: drop-shadow(0 0 14px rgba(85, 231, 255, 0.2));
 }
 
 .hist-line {
@@ -1478,6 +1419,7 @@ button {
     filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
+.timeline-point,
 .scatter-point {
     fill: rgba(255, 255, 255, 0.95);
     stroke: var(--accent);
@@ -1485,42 +1427,11 @@ button {
     filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.18));
 }
 
+.timeline-point.is-highlight,
 .scatter-point.is-highlight {
     fill: var(--accent);
     stroke: rgba(255, 255, 255, 0.95);
     stroke-width: 4;
-}
-
-.timeline-point-glow {
-    opacity: 0.16;
-    filter: blur(8px);
-}
-
-.timeline-point-glow.is-highlight {
-    opacity: 0.26;
-}
-
-.timeline-point-ring {
-    fill: rgba(4, 8, 16, 0.78);
-    stroke-width: 1.8;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 0 12px rgba(110, 242, 255, 0.12));
-}
-
-.timeline-point-ring.is-highlight {
-    stroke-width: 2.3;
-}
-
-.timeline-point-core {
-    stroke: rgba(246, 251, 255, 0.9);
-    stroke-width: 1.2;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 0 10px rgba(246, 251, 255, 0.16));
-}
-
-.timeline-point-core.is-highlight {
-    stroke-width: 1.5;
-    filter: drop-shadow(0 0 16px rgba(246, 251, 255, 0.22));
 }
 
 .marker-line {
@@ -1702,7 +1613,8 @@ button {
 }
 
 .detail-card--snapshot .metric-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
 }
 
 .metric-row {
@@ -1864,11 +1776,6 @@ button {
 .network-edge--ribbon {
     opacity: 0.12;
     filter: blur(0.4px);
-}
-
-.network-edge--core {
-    opacity: 0.7;
-    filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
 .network-edge.is-linked {
