@@ -744,6 +744,37 @@ function buildReferenceVisiblePoints(place, points) {
 function buildSourceNoteContext(place, visiblePoints) {
     const anchorRecord = getReferenceAnchorRecord(place);
 
+    // Compose a Story-Notes string for a given record, walking a fallback
+    // chain so the user always sees the most specific available context:
+    //   1. GNIS detailNote on the record itself
+    //   2. Wikidata description attached to the record (anchor-level)
+    //   3. Wikidata description attached to the place (place-level)
+    //   4. A bare "GNIS does not include …" stub
+    // The Wikidata fallbacks are populated asynchronously by wikidataAnchors.js;
+    // a "wikidata-anchor-updated" event triggers a re-render so notes appear
+    // as soon as the SPARQL response lands, even mid-session.
+    const buildNote = (record, fallbackLabel) => {
+        if (record?.detailNote) return record.detailNote;
+
+        const recordDesc = record?.wikidataDescription;
+        if (recordDesc) {
+            return `Wikidata describes ${record.label || fallbackLabel} as: ${recordDesc}. `
+                 + `GNIS does not include a history note for this record, so this fallback was sourced from Wikidata`
+                 + (record.wikidataId ? ` (Q${record.wikidataId})` : "")
+                 + ".";
+        }
+
+        const placeDesc = place.wikidataDescription;
+        if (placeDesc) {
+            return `Wikidata describes the namesake "${place.name}" as: ${placeDesc}. `
+                 + `GNIS does not include a history note for ${fallbackLabel}, so this fallback was sourced from Wikidata`
+                 + (place.wikidataId ? ` (Q${place.wikidataId})` : "")
+                 + ".";
+        }
+
+        return `GNIS does not include a description/history note for ${fallbackLabel}.`;
+    };
+
     if (state.focusedState) {
         const focusedRecords = visiblePoints.filter((point) => point.state === state.focusedState);
         const focusedRecord = focusedRecords.find((point) => point.detailNote) || focusedRecords[0] || anchorRecord;
@@ -752,7 +783,7 @@ function buildSourceNoteContext(place, visiblePoints) {
             return {
                 kicker: "Focused State Note",
                 headline: focusedRecord.label,
-                note: focusedRecord.detailNote || `GNIS does not include a description/history note for ${focusedRecord.label}.`
+                note: buildNote(focusedRecord, focusedRecord.label)
             };
         }
     }
@@ -761,14 +792,14 @@ function buildSourceNoteContext(place, visiblePoints) {
         return {
             kicker: "Anchor Note",
             headline: anchorRecord.label,
-            note: anchorRecord.detailNote || `GNIS does not include a description/history note for ${anchorRecord.label}.`
+            note: buildNote(anchorRecord, anchorRecord.label)
         };
     }
 
     return {
         kicker: "Source Note",
         headline: place.label,
-        note: `GNIS does not include a description/history note for the selected reference record for ${place.name}.`
+        note: buildNote(null, `the selected reference record for ${place.name}`)
     };
 }
 
@@ -1489,7 +1520,10 @@ function buildGrid(width, height, step) {
 function renderTimelineChart(place) {
     const width = 760;
     const height = 230;
-    const padding = { top: 20, right: 24, bottom: 42, left: 52 };
+    // padding.bottom 42 → 52 to give the bottom axis title room to sit inside
+    // the SVG. Previously the axis title sat at y=height+1, which was BELOW
+    // the SVG bottom edge — descenders ("p", "y") got clipped entirely.
+    const padding = { top: 20, right: 24, bottom: 52, left: 52 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const points = place.timelinePoints;
@@ -1526,7 +1560,7 @@ function renderTimelineChart(place) {
                 .map((point, index) => `
                     <circle class="timeline-point ${index === scaledPoints.length - 1 ? "is-highlight" : ""}" cx="${point.x}" cy="${point.y}" r="${index === scaledPoints.length - 1 ? 7 : 4.5}"></circle>
                     ${index % labelEvery === 0 || index === scaledPoints.length - 1
-                        ? `<text class="chart-note" x="${point.x}" y="${height - 14}" text-anchor="middle">${point.year}</text>`
+                        ? `<text class="chart-note" x="${point.x}" y="${height - 26}" text-anchor="middle">${point.year}</text>`
                         : ""
                     }
                 `)
@@ -1538,7 +1572,8 @@ function renderTimelineChart(place) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Cumulative count</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">Statehood year proxy</text>
+            <!-- Bottom axis title: y was height+1 (BELOW SVG bottom, fully clipped); now inside the SVG with room for descenders -->
+            <text class="axis-label" x="${width - padding.right}" y="${height - 8}" text-anchor="end">Statehood year proxy</text>
             <text class="chart-note" x="${highlighted.x + 10}" y="${highlighted.y - 12}">${filterNote}</text>
         </svg>
     `;
@@ -1548,7 +1583,11 @@ function renderTimelineChart(place) {
 function renderDistanceChart(place, visibleContext) {
     const width = 760;
     const height = 250;
-    const padding = { top: 26, right: 30, bottom: 56, left: 54 };
+    // padding.bottom 56 → 66 to give the "Distance from anchor record (km)"
+    // axis title room to sit further inside the SVG. Previously the title at
+    // y=height-4 was right at the bottom edge with descenders ("(", ")", any
+    // future "p"/"y" letters) being clipped.
+    const padding = { top: 26, right: 30, bottom: 66, left: 54 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const { bins, meanDistanceKm, maxDistanceKm, stepKm } = visibleContext.distanceHistogram;
@@ -1588,7 +1627,7 @@ function renderDistanceChart(place, visibleContext) {
                         <rect class="hist-bar-glow" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(barHeight, 4)}" rx="16" fill="${strokeColor}" opacity="0.12"></rect>
                         <rect class="hist-bar" x="${barX}" y="${barY}" width="${barWidth}" height="${Math.max(barHeight, 4)}" rx="16" fill="${fillColor}" stroke="${strokeColor}"></rect>
                         ${bin.count > 0 ? `<text class="chart-value-label" x="${barX + barWidth / 2}" y="${barY - 8}" text-anchor="middle">${bin.count}</text>` : `<text class="chart-note" x="${barX + barWidth / 2}" y="${padding.top + innerHeight + 20}" text-anchor="middle">0</text>`}
-                        ${index % labelEvery === 0 ? `<text class="chart-note" x="${barX + barWidth / 2}" y="${height - 16}" text-anchor="middle">${label}</text>` : ""}
+                        ${index % labelEvery === 0 ? `<text class="chart-note" x="${barX + barWidth / 2}" y="${height - 28}" text-anchor="middle">${label}</text>` : ""}
                     `;
                 })
                 .join("")}
@@ -1599,7 +1638,8 @@ function renderDistanceChart(place, visibleContext) {
                 })
                 .join("")}
             <text class="axis-label chart-axis-strong" x="${padding.left}" y="18">Records</text>
-            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 4}" text-anchor="end">Distance from anchor record (km)</text>
+            <!-- Bottom axis title: was y=height-4 (cramped against bottom edge); now y=height-10 with padding.bottom bumped to 66 so it sits cleanly above the SVG edge with space between it and the bin labels above. -->
+            <text class="axis-label chart-axis-strong" x="${width - padding.right}" y="${height - 10}" text-anchor="end">Distance from anchor record (km)</text>
             <text class="chart-note" x="${width - padding.right}" y="22" text-anchor="end">Mean ${Math.round(meanDistanceKm || 0)} km</text>
             ${
                 !bins.length
@@ -1613,7 +1653,10 @@ function renderDistanceChart(place, visibleContext) {
 function renderRankChart(place, visibleContext) {
     const width = 760;
     const height = 230;
-    const padding = { top: 24, right: 26, bottom: 46, left: 52 };
+    // padding.bottom 46 → 56 so the bottom axis title sits inside the SVG.
+    // Previously "State rank" at y=height+1 was rendered BELOW the SVG edge
+    // and clipped completely.
+    const padding = { top: 24, right: 26, bottom: 56, left: 52 };
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
     const rankPoints = visibleContext.rankPoints;
@@ -1631,7 +1674,7 @@ function renderRankChart(place, visibleContext) {
                     const y = padding.top + innerHeight - (point.value / maxValue) * innerHeight;
                     return `
                         <circle class="scatter-point ${point.highlight ? "is-highlight" : ""}" cx="${x}" cy="${y}" r="${point.highlight ? 8 : 5}"></circle>
-                        <text class="chart-note" x="${x}" y="${height - 14}" text-anchor="middle">${point.rank}</text>
+                        <text class="chart-note" x="${x}" y="${height - 26}" text-anchor="middle">${point.rank}</text>
                         ${point.highlight ? `<text class="chart-note" x="${x + 12}" y="${y - 12}">top state count ${point.value}</text>` : ""}
                     `;
                 })
@@ -1643,7 +1686,8 @@ function renderRankChart(place, visibleContext) {
                 })
                 .join("")}
             <text class="axis-label" x="${padding.left}" y="18">Occurrences in one state</text>
-            <text class="axis-label" x="${width - padding.right}" y="${height + 1}" text-anchor="end">State rank</text>
+            <!-- Bottom axis title: y was height+1 (BELOW SVG bottom, fully clipped); now inside the SVG with room for descenders -->
+            <text class="axis-label" x="${width - padding.right}" y="${height - 8}" text-anchor="end">State rank</text>
             ${
                 !rankPoints.length
                     ? `<text class="chart-note" x="${width / 2}" y="${height / 2}" text-anchor="middle">No state ranks remain under the current filters.</text>`
@@ -3593,6 +3637,18 @@ function init() {
     elements.vizStage.addEventListener("pointermove", handleVizPointerMove);
     elements.vizStage.addEventListener("pointerleave", handleVizPointerLeave);
     window.addEventListener("resize", syncInsetWindows);
+
+    // Wikidata SPARQL queries run asynchronously after page load and patch
+    // each place's anchor record + description as responses arrive. When the
+    // patched place is the one currently selected, re-render so Story Notes
+    // (and any other Wikidata-derived copy) refresh without a manual reload.
+    document.addEventListener("wikidata-anchor-updated", (event) => {
+        const updatedId = event.detail?.placeId;
+        if (!updatedId) return;
+        if (state.selectedPlaceId && updatedId === state.selectedPlaceId) {
+            renderApp();
+        }
+    });
 
     renderApp();
 }

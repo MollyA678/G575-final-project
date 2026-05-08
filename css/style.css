@@ -261,7 +261,13 @@ button {
     padding: 16px;
 }
 
-.stats-card,
+.stats-card {
+    /* Trimmed from 18px → 14px so the chart sits more compactly above the map.
+       Extra space was unnecessary now that the card has no neighbour to its
+       right (it spans the whole row instead of sharing with Snapshot). */
+    padding: 14px;
+}
+
 .viz-card {
     padding: 18px;
 }
@@ -449,6 +455,12 @@ button {
     margin-bottom: 14px;
 }
 
+/* Stats card sits above the map and benefits from a tighter header so the
+   chart starts higher in the page without losing the title row's hierarchy. */
+.stats-card .stats-card__header {
+    margin-bottom: 10px;
+}
+
 .select-box {
     display: grid;
     gap: 8px;
@@ -475,9 +487,12 @@ button {
 
 /* Statistic cards use the same dark frame, but with extra breathing room for SVG plots. */
 .chart-frame {
-    min-height: 240px;
+    /* min-height 240 → 220 and padding 14 → 10: the SVG inside uses a viewBox
+       so it scales to its container; shrinking the frame compresses the
+       chart without losing legibility. */
+    min-height: 220px;
     border-radius: 28px;
-    padding: 14px;
+    padding: 10px;
     background:
         radial-gradient(circle at 50% 0%, rgba(85, 231, 255, 0.09), transparent 36%),
         linear-gradient(180deg, rgba(7, 12, 23, 0.96), rgba(3, 7, 15, 0.98));

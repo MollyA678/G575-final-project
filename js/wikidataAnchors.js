@@ -119,8 +119,12 @@
     function buildSparqlQuery(placeName) {
         // Escape single quotes inside the name for safe SPARQL injection
         const safe = placeName.replace(/'/g, "\\'");
+        // ?itemDescription is provided automatically by the wikibase:label
+        // service whenever ?itemLabel is requested; we surface it here so
+        // main.js can fall back to the Wikidata description when GNIS does
+        // not have a history note for the selected record.
         return `
-SELECT ?item ?itemLabel ?inception ?lat ?lon ?stateLabel WHERE {
+SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel WHERE {
   ?item rdfs:label "${safe}"@en .
   ?item wdt:P17 wd:Q30 .          # country = United States
   ?item wdt:P625 ?coord .          # has coordinates
@@ -177,9 +181,15 @@ LIMIT 5`;
             ? parseInt(inceptionRaw.slice(0, 4), 10)
             : null;
 
+        // Wikidata description text (e.g. "city in New York, United States")
+        // is stored separately so main.js can use it as a Story-Notes fallback
+        // for records where GNIS doesn't supply a history note.
+        const description = best.itemDescription?.value || null;
+
         const result = {
             wikidataId:    best.item.value.split("/").pop(),
             label:         best.itemLabel?.value || placeName,
+            description,
             lat:           parseFloat(best.lat.value),
             lon:           parseFloat(best.lon.value),
             inceptionYear,
@@ -193,7 +203,7 @@ LIMIT 5`;
     // ── Patch a single place object ───────────────────────────────────────────
 
     function patchPlaceAnchor(place, wdResult) {
-        const { lat, lon, inceptionYear, wikidataId, label, stateLabel } = wdResult;
+        const { lat, lon, inceptionYear, wikidataId, label, stateLabel, description } = wdResult;
         const svgCoord = latLonToSvg(lat, lon);
         const region   = inferRegion(lat, lon);
         const era      = yearToEra(inceptionYear);
@@ -211,8 +221,15 @@ LIMIT 5`;
         }
 
         if (bestRecord && bestDistance <= COORD_MATCH_KM) {
-            // Promote the closest GNIS record — it's the same physical place
-            place.anchorRecord = { ...bestRecord };
+            // Promote the closest GNIS record — it's the same physical place.
+            // Carry the Wikidata description onto the promoted anchor so the
+            // Story Notes block can use it as a fallback when GNIS doesn't
+            // supply a detailNote of its own.
+            place.anchorRecord = {
+                ...bestRecord,
+                wikidataId,
+                wikidataDescription: description || null
+            };
 
             console.info(
                 `[wikidataAnchors] "${place.name}" → promoted GNIS record`
@@ -255,6 +272,9 @@ LIMIT 5`;
                 detailNote:   `Anchor sourced from Wikidata (Q${wikidataId})`
                               + (inceptionYear ? `; earliest known inception ${inceptionYear}` : "")
                               + ". GNIS does not record this as the founding date."
+                              + (description ? ` Wikidata describes this place as: ${description}.` : ""),
+                wikidataId,
+                wikidataDescription: description || null
             };
 
             console.info(
@@ -268,6 +288,22 @@ LIMIT 5`;
         if (inceptionYear && inceptionYear > 1400 && inceptionYear < 2100) {
             place.wikidataInceptionYear = inceptionYear;
         }
+
+        // Place-level description fallback. Used by Story Notes when the
+        // active record is some non-anchor GNIS entry without its own note.
+        if (description) {
+            place.wikidataDescription = description;
+            place.wikidataId          = wikidataId;
+        }
+
+        // Notify main.js (or any other listener) that this place's metadata
+        // has been enriched, so a re-render can pick up the new description
+        // even if the SPARQL response arrives mid-session.
+        try {
+            document.dispatchEvent(new CustomEvent("wikidata-anchor-updated", {
+                detail: { placeId: place.id, placeName: place.name, hasDescription: !!description }
+            }));
+        } catch { /* CustomEvent unavailable in some very old runtimes — silently skip */ }
     }
 
     // ── Delay helper ──────────────────────────────────────────────────────────
