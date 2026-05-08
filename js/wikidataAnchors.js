@@ -158,6 +158,36 @@ ORDER BY ASC(?inception) ASC(?item)
 LIMIT 5`;
     }
 
+    /**
+     * Queries Wikidata for all US settlements named `placeName`, then picks
+     * the result whose coordinates are closest to the supplied lat/lon.
+     * Returns the same result shape as fetchWikidataResult.
+     */
+    function buildSparqlQueryAllResults(placeName) {
+        const safe = placeName.replace(/'/g, "\\'");
+        return `
+SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel ?article WHERE {
+  ?item rdfs:label "${safe}"@en .
+  ?item wdt:P17 wd:Q30 .
+  ?item wdt:P625 ?coord .
+  BIND(geof:latitude(?coord)  AS ?lat)
+  BIND(geof:longitude(?coord) AS ?lon)
+  OPTIONAL { ?item wdt:P571 ?inception . }
+  OPTIONAL {
+    ?item wdt:P131+ ?state .
+    ?state wdt:P31/wdt:P279* wd:Q35657 .
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+  }
+  OPTIONAL {
+    ?article schema:about ?item ;
+             schema:isPartOf <https://en.wikipedia.org/> .
+  }
+  ?item wdt:P31/wdt:P279* wd:Q486972 .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+LIMIT 25`;
+    }
+
     // ── Wikipedia REST summary extract ────────────────────────────────────────
     // Fetches the lead-section prose from the Wikipedia REST API when the
     // Wikidata description is absent or a short one-liner (≤ 60 chars).
@@ -242,9 +272,102 @@ LIMIT 5`;
         return result;
     }
 
-    
+    // ── On-demand description fetch for a specific clicked GNIS record ────────
+    //
+    // When the user clicks a non-anchor dot (e.g. "Kingston, Georgia"), the
+    // record has no wikidataDescription of its own — only the anchor record gets
+    // one during the initial resolveAllAnchors() pass. This function fetches all
+    // Wikidata US settlements sharing the record's name, then picks the one whose
+    // coordinates are closest to the GNIS record's lat/lon. It patches
+    // record.wikidataDescription (and record.wikidataId) in-place so subsequent
+    // clicks are served from the already-enriched object without a second request.
+
+    async function fetchRecordDescription(record) {
+        if (!record || !record.label) return;
+
+        // Already enriched — nothing to do.
+        if (record.wikidataDescription) return;
+
+        const name = record.label
+            .replace(/,\s*[A-Z]{2}$/, "")   // strip trailing state abbreviation if present
+            .replace(/,.*$/, "")             // strip ", Georgia" style suffixes
+            .trim();
+
+        const cacheKey = `record:${String(record.id)}`;
+        const cached = cacheGet(cacheKey);
+        if (cached !== null) {
+            // null cached means we already tried and found nothing
+            if (cached && cached.description) {
+                record.wikidataDescription = cached.description;
+                record.wikidataId          = cached.wikidataId;
+            }
+            return;
+        }
+
+        try {
+            const url = SPARQL_ENDPOINT
+                + "?format=json&query="
+                + encodeURIComponent(buildSparqlQueryAllResults(name));
+
+            const response = await fetch(url, {
+                headers: { Accept: "application/sparql-results+json" }
+            });
+            if (!response.ok) throw new Error(`SPARQL HTTP ${response.status}`);
+
+            const data    = await response.json();
+            const results = (data.results?.bindings || [])
+                .filter(r => r.lat?.value && r.lon?.value);
+
+            if (!results.length) {
+                cacheSet(cacheKey, null);
+                return;
+            }
+
+            // Pick the Wikidata result geographically closest to this GNIS record.
+            let best = null;
+            let bestDist = Infinity;
+            for (const r of results) {
+                const d = haversineKm(
+                    record.lat, record.lon,
+                    parseFloat(r.lat.value), parseFloat(r.lon.value)
+                );
+                if (d < bestDist) { bestDist = d; best = r; }
+            }
+
+            // Only accept the match if it's within 80 km — avoids mis-attributing
+            // a completely different settlement that happens to share the name.
+            if (!best || bestDist > 80) {
+                cacheSet(cacheKey, null);
+                return;
+            }
+
+            let description = best.itemDescription?.value || null;
+            const articleUrl = best.article?.value || null;
+
+            // Prefer a richer Wikipedia prose extract over the short Wikidata one-liner.
+            if (articleUrl && (!description || description.length <= 60)) {
+                const extract = await fetchWikipediaExtract(articleUrl);
+                if (extract) description = extract;
+            }
+
+            const wikidataId = best.item.value.split("/").pop();
+            cacheSet(cacheKey, { wikidataId, description });
+
+            if (description) {
+                record.wikidataDescription = description;
+                record.wikidataId          = wikidataId;
+            }
+
+        } catch (err) {
+            console.warn(`[wikidataAnchors] fetchRecordDescription failed for "${record.label}":`, err.message);
+            cacheSet(cacheKey, null);
+        }
+    }
+
+    // Expose on window so main.js can call it on point-click without a module import.
+    window.fetchRecordDescription = fetchRecordDescription;
+
 async function fetchNamesakeInfo(placeName, originName) {
-    const cacheKey = `namesake:${originName}:${placeName}`;
     const cached = cacheGet(cacheKey);
     if (cached !== null) return cached;
 

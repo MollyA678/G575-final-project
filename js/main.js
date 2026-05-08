@@ -2369,14 +2369,32 @@ function togglePinnedInteraction(target, event) {
                 (matchId(place.anchorRecord || {}) ? place.anchorRecord : null);
 
             if (record && elements.detailCopy) {
-                const isAnchor = record.id === place.anchorRecord?.id;
-                const note     = buildNoteForRecord(record, record.label, place);
-                elements.detailCopy.textContent = note;
-                if (elements.detailEyebrow) {
-                    elements.detailEyebrow.textContent = isAnchor ? "Anchor Record" : "Pinned Record";
-                }
-                if (elements.detailHeading) {
-                    elements.detailHeading.textContent = record.label;
+                const pinnedSignature = signature; // capture for async staleness check
+
+                const applyRecordNote = () => {
+                    // Bail if the user has already clicked elsewhere or cleared the pin.
+                    if (!state.pinnedInteraction || state.pinnedInteraction.signature !== pinnedSignature) return;
+                    const isAnchor = record.id === place.anchorRecord?.id;
+                    const note     = buildNoteForRecord(record, record.label, place);
+                    elements.detailCopy.textContent = note;
+                    if (elements.detailEyebrow) {
+                        elements.detailEyebrow.textContent = isAnchor ? "Anchor Record" : "Pinned Record";
+                    }
+                    if (elements.detailHeading) {
+                        elements.detailHeading.textContent = record.label;
+                    }
+                };
+
+                // Show whatever we already have immediately (may be generic fallback).
+                applyRecordNote();
+
+                // If this record has no specific description yet, fetch it from
+                // Wikidata using its coordinates so we get Kingston, Georgia —
+                // not the namesake in England — then refresh the panel.
+                if (!record.detailNote && !record.wikidataDescription && window.fetchRecordDescription) {
+                    window.fetchRecordDescription(record).then(() => {
+                        applyRecordNote();
+                    }).catch(() => {});
                 }
             }
         }
