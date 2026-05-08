@@ -2954,13 +2954,21 @@ function renderGuidedState(step) {
     // step = "origin" | "place"
     const clipId = "map-clip-usa-guide";
 
-    // Blank USA basemap — states drawn but no points, no routes
+    // Blank USA basemap — states drawn but no points, no routes.
+    //
+    // NOTE: an earlier version of this function assumed `shape.paths` was an
+    // array of sub-path objects, which threw "(...).map is not a function"
+    // because `shape.paths` is actually an OBJECT keyed by detail level
+    // (e.g. {fine: "M...", coarse: "M..."}) — see getShapePathByDetail() at
+    // line ~788. Using the helper keeps this consistent with every other
+    // place that renders the USA basemap.
     const statePolygons = Array.from(USA_STATE_SHAPES.values())
         .map((shape) => {
-            const paths = (shape.paths || [shape]).map((p) =>
-                `<path class="us-state us-state--guide" d="${p.d || shape.d}"></path>`
-            ).join("");
-            return paths;
+            const d = getShapePathByDetail(shape, "fine")
+                   || getShapePathByDetail(shape, "coarse")
+                   || shape?.path
+                   || "";
+            return d ? `<path class="us-state us-state--guide" d="${d}"></path>` : "";
         })
         .join("");
 
