@@ -78,11 +78,34 @@
                 </p>
             </div>
 
-            <nav class="view-switch" aria-label="Visualization views">
-                <button class="view-pill is-active" type="button" data-view="global">Global</button>
-                <button class="view-pill" type="button" data-view="usa">USA</button>
-                <button class="view-pill" type="button" data-view="local">Local</button>
-            </nav>
+            <div class="hero__rail">
+                <nav class="view-switch" aria-label="Visualization views">
+                    <button class="view-pill is-active" type="button" data-view="global">Global</button>
+                    <button class="view-pill" type="button" data-view="usa">USA</button>
+                    <button class="view-pill" type="button" data-view="local">Local</button>
+                </nav>
+
+                <!--
+                    Hero info stack: the "How to Read This" and "Visible Records" cards
+                    used to live at the bottom of the USA map; they have been promoted
+                    here so they are always visible at the top of the page, stacked
+                    vertically beneath the view switch. JS populates them from
+                    renderHeroAnnotations() and toggles visibility based on view state.
+                -->
+                <div class="hero-info-stack" id="hero-info-stack" data-hero-state="hidden" aria-live="polite">
+                    <article class="annotation-card hero-info-card" id="hero-card-howto">
+                        <p class="annotation-card__eyebrow">How To Read This</p>
+                        <p id="hero-howto-text">
+                            The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor.
+                        </p>
+                    </article>
+                    <article class="annotation-card hero-info-card" id="hero-card-records">
+                        <p class="annotation-card__eyebrow">Visible Records</p>
+                        <div class="annotation-card__metric" id="hero-records-metric">—</div>
+                        <p id="hero-records-summary">Select a country and a place name to load records.</p>
+                    </article>
+                </div>
+            </div>
         </header>
 
         <section class="workspace">
@@ -114,7 +137,7 @@
                             </button>
 
                             <div id="left-panel-body" class="floating-panel__body">
-                                <section class="floating-panel__section">
+                                <section class="floating-panel__section" id="panel-section-search" data-guide-section="origin">
                                     <div class="section-heading">
                                         <p class="section-heading__eyebrow">Browse</p>
                                         <h2 class="section-heading__title">Search & Origins</h2>
@@ -132,7 +155,7 @@
                                     <div id="origin-list" class="list-stack list-stack--floating" aria-live="polite"></div>
                                 </section>
 
-                                <section class="floating-panel__section">
+                                <section class="floating-panel__section" id="panel-section-places" data-guide-section="place">
                                     <div class="section-heading">
                                         <p class="section-heading__eyebrow">Names</p>
                                         <h2 class="section-heading__title">Related Places</h2>

@@ -2168,6 +2168,17 @@ function renderUsaView(origin, place) {
     const getDistanceColor = (distanceKm) =>
         mixColors("#63ebff", "#ff4fb8", (distanceKm || 0) / maxDistanceKm, 0.96);
 
+    // The "How To Read This" + "Visible Records" cards used to render at the
+    // bottom of the USA map. They now live in the hero rail at the top of
+    // the page, populated here with the live record count so they react to
+    // every filter change in lockstep with the map.
+    renderHeroAnnotations({
+        visibleCount: visiblePoints.length,
+        summaryText:  `${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}`,
+        howToText:    "The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor."
+    });
+    setHeroAnnotationsVisible(true);
+
     const routes = visiblePoints
         .map((point) => {
             if (point.isAnchorRecord) {
@@ -2237,20 +2248,6 @@ function renderUsaView(origin, place) {
                     }
                 </svg>
                 ${renderLocalInset(origin, place, "usa")}
-            </div>
-
-            <div class="annotation-row">
-                <article class="annotation-card">
-                    <p class="annotation-card__eyebrow">How To Read This</p>
-                    <p>
-                        The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor.
-                    </p>
-                </article>
-                <article class="annotation-card">
-                    <p class="annotation-card__eyebrow">Visible Records</p>
-                    <div class="annotation-card__metric">${visiblePoints.length}</div>
-                    <p>${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}</p>
-                </article>
             </div>
         </div>
     `;
@@ -2877,9 +2874,14 @@ function renderVizStage(origin, place) {
         : viewConfig.description(origin, place);
 
     if (state.selectedView === "usa") {
+        // renderUsaView() is responsible for showing + populating the hero info stack.
         elements.vizStage.innerHTML = renderUsaView(origin, place);
         return;
     }
+
+    // Global / Local views keep their own annotation cards inside the map area,
+    // so the hero info stack (USA-specific) hides itself here.
+    setHeroAnnotationsVisible(false);
 
     if (state.selectedView === "local") {
         elements.vizStage.innerHTML = renderLocalView(origin, place);
@@ -2924,6 +2926,30 @@ function renderDetails(origin, place) {
         .join("");
 }
 
+function renderHeroAnnotations({ visibleCount, summaryText, howToText } = {}) {
+    // Populates the "How To Read This" + "Visible Records" cards that live
+    // in the hero rail (top of page). These cards used to render at the
+    // bottom of the USA map; promoting them keeps the map area cleaner and
+    // surfaces the live record count + reading guide as soon as the page
+    // scrolls into view.
+    const metricEl  = document.getElementById("hero-records-metric");
+    const summaryEl = document.getElementById("hero-records-summary");
+    const howToEl   = document.getElementById("hero-howto-text");
+
+    if (metricEl)  metricEl.textContent  = String(visibleCount ?? "—");
+    if (summaryEl) summaryEl.textContent = summaryText ?? "";
+    if (howToText && howToEl) howToEl.textContent = howToText;
+}
+
+function setHeroAnnotationsVisible(isVisible) {
+    // Single source of truth for whether the hero info stack is shown.
+    // Hidden during the guided state and on Global/Local views, visible
+    // once the user has both an origin and a place name selected on USA.
+    const stack = document.getElementById("hero-info-stack");
+    if (!stack) return;
+    stack.dataset.heroState = isVisible ? "visible" : "hidden";
+}
+
 function renderGuidedState(step) {
     // step = "origin" | "place"
     const clipId = "map-clip-usa-guide";
@@ -2938,13 +2964,12 @@ function renderGuidedState(step) {
         })
         .join("");
 
-    const guideText = step === "origin"
-        ? "Choose a cultural origin from the Browse panel →"
-        : "Now choose a place name from the panel →";
-
+    // Single, friendly placeholder phrase for both steps so the prompt feels
+    // consistent. The subtext shifts based on which selection is still pending.
+    const guideText    = "Select a country and place name";
     const guideSubtext = step === "origin"
-        ? "Select England, Germany, Greece, or another origin to begin."
-        : "Pick a specific name to see its diffusion across the US.";
+        ? "Start in the Browse panel on the left ←"
+        : "Now pick a name from Related Places ←";
 
     elements.vizStage.innerHTML = `
         <div class="viz-layout viz-layout--usa">
@@ -2962,8 +2987,8 @@ function renderGuidedState(step) {
                             <g class="map-state-layer">${statePolygons}</g>
                         </g>
                     </g>
-                    <text class="guided-prompt-title" x="500" y="244" text-anchor="middle">${guideText}</text>
-                    <text class="guided-prompt-sub" x="500" y="274" text-anchor="middle">${guideSubtext}</text>
+                    <text class="guided-prompt-title" x="500" y="262" text-anchor="middle">${guideText}</text>
+                    <text class="guided-prompt-sub" x="500" y="294" text-anchor="middle">${guideSubtext}</text>
                 </svg>
             </div>
         </div>
@@ -2971,30 +2996,38 @@ function renderGuidedState(step) {
 
     // Update header copy
     elements.viewKicker.textContent = step === "origin" ? "Step 1 of 2" : "Step 2 of 2";
-    elements.viewTitle.textContent = step === "origin" ? "Choose a Cultural Origin" : "Choose a Place Name";
+    elements.viewTitle.textContent  = step === "origin" ? "Choose a Cultural Origin" : "Choose a Place Name";
     elements.viewDescription.textContent = step === "origin"
         ? "Select a cultural origin group from the Browse panel on the left to begin exploring name diffusion."
         : "Select a specific place name from the Related Places list to load the diffusion map.";
 
     // Stat / detail panels show placeholder copy
-    elements.statTitle.textContent = "Awaiting selection";
+    elements.statTitle.textContent   = "Awaiting selection";
     elements.statSummary.textContent = "Charts will appear once both a cultural origin and a place name are selected.";
-    elements.statChart.innerHTML = `<div class="empty-state guided-placeholder">Select an origin and a name to load charts.</div>`;
-    elements.detailCopy.textContent = "Snapshot metrics will appear once a place name is selected.";
-    elements.metricList.innerHTML = "";
+    elements.statChart.innerHTML     = `<div class="empty-state guided-placeholder">Select an origin and a name to load charts.</div>`;
+    elements.detailCopy.textContent  = "Snapshot metrics will appear once a place name is selected.";
+    elements.metricList.innerHTML    = "";
 
     if (step === "origin") {
         elements.placeList.innerHTML = `<div class="empty-state guided-placeholder">Choose an origin above to see its place names.</div>`;
     }
-    
 
-    // Drive glow class onto the relevant panel buttons
-    document.querySelectorAll(".origin-button").forEach((btn) => {
-        btn.classList.toggle("is-guide-prompt", step === "origin");
+    // Hero info stack stays hidden during the guided state — the cards are
+    // only meaningful once a real anchor record is being rendered on the map.
+    setHeroAnnotationsVisible(false);
+
+    // Drive pulse-glow onto the WHOLE relevant floating panel section
+    // (Search & Origins for step 1, Related Places for step 2). Earlier
+    // versions toggled the glow on individual buttons; pulsing the whole
+    // section is a stronger visual cue toward the next interaction.
+    document.querySelectorAll(".floating-panel__section[data-guide-section]").forEach((section) => {
+        const isTarget = section.dataset.guideSection === step;
+        section.classList.toggle("is-pulse-prompt", isTarget);
     });
-    document.querySelectorAll(".place-button").forEach((btn) => {
-        btn.classList.toggle("is-guide-prompt", step === "place");
-    });
+
+    // Clear any leftover button-level glows from previous renders
+    document.querySelectorAll(".origin-button.is-guide-prompt, .place-button.is-guide-prompt")
+        .forEach((btn) => btn.classList.remove("is-guide-prompt"));
 }
 
 function renderEmptyState() {
@@ -3009,6 +3042,8 @@ function renderEmptyState() {
     elements.vizStage.innerHTML = `<div class="empty-state">No view to render.</div>`;
     elements.detailCopy.textContent = "Clear or change the search to restore the prototype views.";
     elements.metricList.innerHTML = "";
+    // No active selection means the hero info stack has nothing to report
+    setHeroAnnotationsVisible(false);
 }
 
 function syncViewButtons() {
@@ -3273,8 +3308,12 @@ function renderApp() {
     }
 
     updateTheme(origin);
-    // Clear any lingering guided-state glows now that both selections are active
+    // Clear any lingering guided-state glows now that both selections are active.
+    // Two visual treatments may be in play: (1) the legacy per-button glow on
+    // origin/place buttons (.is-guide-prompt), and (2) the new whole-section
+    // pulse on the floating panel containers (.is-pulse-prompt).
     document.querySelectorAll(".is-guide-prompt").forEach((el) => el.classList.remove("is-guide-prompt"));
+    document.querySelectorAll(".floating-panel__section.is-pulse-prompt").forEach((el) => el.classList.remove("is-pulse-prompt"));
     renderPlaceList();
     renderEraLegend(place);
     renderStatChart(origin, place, buildVisibleContext(place));
