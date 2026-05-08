@@ -35,6 +35,7 @@
     // ── Constants ────────────────────────────────────────────────────────────
 
     const SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
+    const WIKIPEDIA_API   = "https://en.wikipedia.org/api/rest_v1/page/summary/";
     const CACHE_PREFIX    = "wdAnchor:";
     const INTER_QUERY_MS  = 1000;   // polite delay between SPARQL calls
     const COORD_MATCH_KM  = 150;    // max distance to consider a GNIS record a match
@@ -123,8 +124,11 @@
         // service whenever ?itemLabel is requested; we surface it here so
         // main.js can fall back to the Wikidata description when GNIS does
         // not have a history note for the selected record.
+        // ?article captures the English Wikipedia sitelink so we can fetch a
+        // richer prose extract via the REST API when the short description is
+        // too thin to be useful in the Story Notes block.
         return `
-SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel WHERE {
+SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel ?article WHERE {
   ?item rdfs:label "${safe}"@en .
   ?item wdt:P17 wd:Q30 .          # country = United States
   ?item wdt:P625 ?coord .          # has coordinates
@@ -136,11 +140,38 @@ SELECT ?item ?itemLabel ?itemDescription ?inception ?lat ?lon ?stateLabel WHERE 
     ?state wdt:P31/wdt:P279* wd:Q35657 .   # administrative territorial entity of the US
     SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
   }
+  OPTIONAL {
+    ?article schema:about ?item ;
+             schema:isPartOf <https://en.wikipedia.org/> .
+  }
   ?item wdt:P31/wdt:P279* wd:Q486972 .    # instance of human settlement (broad)
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
 }
 ORDER BY ASC(?inception) ASC(?item)
 LIMIT 5`;
+    }
+
+    // ── Wikipedia REST API extract ─────────────────────────────────────────────
+    // Fetches a plain-text article extract from the Wikipedia REST summary
+    // endpoint when the bare Wikidata description is too thin for Story Notes.
+    async function fetchWikipediaExtract(articleUrl) {
+        try {
+            const title = decodeURIComponent(articleUrl.split("/wiki/").pop() || "");
+            if (!title) return null;
+
+            const apiUrl = WIKIPEDIA_API + encodeURIComponent(title);
+            const response = await fetch(apiUrl, {
+                headers: { Accept: "application/json" }
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            const raw = (data.extract || "").trim();
+            return raw.length > 20 ? raw.slice(0, 900) + (raw.length > 900 ? "…" : "") : null;
+        } catch {
+            return null;
+        }
     }
 
     // ── Fetch one place from Wikidata ─────────────────────────────────────────
@@ -184,7 +215,17 @@ LIMIT 5`;
         // Wikidata description text (e.g. "city in New York, United States")
         // is stored separately so main.js can use it as a Story-Notes fallback
         // for records where GNIS doesn't supply a history note.
-        const description = best.itemDescription?.value || null;
+        let description = best.itemDescription?.value || null;
+
+        // If we have a Wikipedia sitelink, try to get a richer prose extract.
+        // Prefer it only when the Wikidata description is absent or too short.
+        const articleUrl = best.article?.value || null;
+        if (articleUrl && (!description || description.length <= 60)) {
+            const extract = await fetchWikipediaExtract(articleUrl);
+            if (extract) {
+                description = extract;
+            }
+        }
 
         const result = {
             wikidataId:    best.item.value.split("/").pop(),
