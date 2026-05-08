@@ -28,6 +28,12 @@
                         most US place-naming impact, when names diffused most rapidly, and how far
                         they traveled from their first known US appearance.
                     </p>
+                    <p class="intro-section__text">
+                        This is a coordinated prototype built from the project wireframes and now backed by
+                        real USGS GNIS place-name records. The current version uses a curated subset of
+                        exact-name matches plus proxy time groupings, so the overall interaction
+                        structure is already data-driven.
+                    </p>
                 </div>
 
                 <div class="intro-section intro-section--highlight">
@@ -44,12 +50,22 @@
                 </div>
 
                 <div class="intro-section">
+                    <p class="intro-section__label">How to Read the Map</p>
+                    <p class="intro-section__text">
+                        The bright anchor marks the selected GNIS reference record for this name.
+                        Every other visible point is routed from that anchor, and both color and
+                        local spread use distance from the anchor record rather than a hypothetical
+                        entry corridor.
+                    </p>
+                </div>
+
+                <div class="intro-section">
                     <p class="intro-section__label">How to Explore</p>
                     <p class="intro-section__text">
                         Switch between <strong>Global / USA / Local</strong> views at the top right.
                         In the left panel, select a cultural origin (e.g. Germany) then a specific
                         place name (e.g. Berlin) to focus all views on that name&rsquo;s diffusion
-                        story. The right panel filters by US region and settlement era. Below the
+                        story. The right panel filters by US region and settlement era. Above the
                         map, choose a <strong>Timeline</strong> (cumulative spread),
                         <strong>Distance Profile</strong> (how far names traveled), or
                         <strong>State Rank Scatter</strong> (which states adopted a name most).
@@ -66,50 +82,49 @@
     </div>
 
     <main class="app-shell">
-        <!-- Top-level narrative framing and view switching. -->
+        <!-- Top-level title bar: just the headline and the view switch. The
+             previous eyebrow ("GEOG 575 Prototype Skeleton") and prototype
+             subtitle have been merged into the welcome modal so the hero
+             stays a single, scannable line at the top of the page. -->
         <header class="hero">
-            <div class="hero__copy">
-                <p class="hero__eyebrow">GEOG 575 Prototype Skeleton</p>
-                <h1 class="hero__title">Cultural Diffusion of Non-US Place Names in the US</h1>
-                <p class="hero__subtitle">
-                    A coordinated prototype built from the project wireframes and now backed by real
-                    USGS GNIS place-name records. The current version uses a curated subset of exact-name
-                    matches plus proxy time groupings so the overall interaction structure is already data-driven.
-                </p>
-            </div>
+            <h1 class="hero__title">Cultural Diffusion of Non-US Place Names in the US</h1>
 
-            <div class="hero__rail">
-                <nav class="view-switch" aria-label="Visualization views">
-                    <button class="view-pill is-active" type="button" data-view="global">Global</button>
-                    <button class="view-pill" type="button" data-view="usa">USA</button>
-                    <button class="view-pill" type="button" data-view="local">Local</button>
-                </nav>
-
-                <!--
-                    Hero info stack: the "How to Read This" and "Visible Records" cards
-                    used to live at the bottom of the USA map; they have been promoted
-                    here so they are always visible at the top of the page, stacked
-                    vertically beneath the view switch. JS populates them from
-                    renderHeroAnnotations() and toggles visibility based on view state.
-                -->
-                <div class="hero-info-stack" id="hero-info-stack" data-hero-state="hidden" aria-live="polite">
-                    <article class="annotation-card hero-info-card" id="hero-card-howto">
-                        <p class="annotation-card__eyebrow">How To Read This</p>
-                        <p id="hero-howto-text">
-                            The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor.
-                        </p>
-                    </article>
-                    <article class="annotation-card hero-info-card" id="hero-card-records">
-                        <p class="annotation-card__eyebrow">Visible Records</p>
-                        <div class="annotation-card__metric" id="hero-records-metric">—</div>
-                        <p id="hero-records-summary">Select a country and a place name to load records.</p>
-                    </article>
-                </div>
-            </div>
+            <nav class="view-switch" aria-label="Visualization views">
+                <button class="view-pill is-active" type="button" data-view="global">Global</button>
+                <button class="view-pill" type="button" data-view="usa">USA</button>
+                <button class="view-pill" type="button" data-view="local">Local</button>
+            </nav>
         </header>
 
         <section class="workspace">
             <section class="main-panel">
+                <!--
+                    Statistics card has been promoted ABOVE the map. It used to
+                    sit beside Snapshot in the analysis row below the map; with
+                    the more compact hero, this is now the natural place for
+                    the chart so it's the first analytical surface a user sees.
+                -->
+                <section class="stats-card">
+                    <div class="stats-card__header">
+                        <div>
+                            <p class="section-heading__eyebrow">Statistics</p>
+                            <h2 id="stat-title" class="section-heading__title">Places named Kingston over time</h2>
+                            <p id="stat-summary" class="section-copy"></p>
+                        </div>
+
+                        <label class="select-box" for="stat-select">
+                            <span class="select-box__label">Choose statistic</span>
+                            <select id="stat-select">
+                                <option value="timeline">Growth over time</option>
+                                <option value="distance">Distance profile</option>
+                                <option value="rank">Local rank scatter</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div id="stat-chart" class="chart-frame" aria-live="polite"></div>
+                </section>
+
                 <!-- Primary map stage with floating browse/layer controls. -->
                 <section class="viz-card viz-card--hero">
                     <div class="viz-card__header">
@@ -200,42 +215,20 @@
                     </div>
                 </section>
 
-                <div class="panel-row panel-row--analysis">
-                    <!-- Statistics panel is reused across views and swaps chart type in place. -->
-                    <section class="stats-card">
-                        <div class="stats-card__header">
-                            <div>
-                                <p class="section-heading__eyebrow">Statistics</p>
-                                <h2 id="stat-title" class="section-heading__title">Places named Kingston over time</h2>
-                                <p id="stat-summary" class="section-copy"></p>
-                            </div>
+                <!--
+                    Bottom row: Visible Records, Interpretation (Story Notes), and
+                    Snapshot (Selected Context) sit side-by-side in a single line
+                    below the map. Visible Records was previously in the hero rail;
+                    the other two were in separate rows beneath the analysis card.
+                -->
+                <div class="panel-row panel-row--bottom">
+                    <article class="annotation-card panel-row__card" id="hero-card-records">
+                        <p class="annotation-card__eyebrow">Visible Records</p>
+                        <div class="annotation-card__metric" id="hero-records-metric">—</div>
+                        <p id="hero-records-summary">Select a country and a place name to load records.</p>
+                    </article>
 
-                            <label class="select-box" for="stat-select">
-                                <span class="select-box__label">Choose statistic</span>
-                                <select id="stat-select">
-                                    <option value="timeline">Growth over time</option>
-                                    <option value="distance">Distance profile</option>
-                                    <option value="rank">Local rank scatter</option>
-                                </select>
-                            </label>
-                        </div>
-
-                        <div id="stat-chart" class="chart-frame" aria-live="polite"></div>
-                    </section>
-
-                    <section class="detail-card detail-card--snapshot">
-                        <!-- Compact metric readout for the current origin / place / filter state. -->
-                        <div class="section-heading">
-                            <p class="section-heading__eyebrow">Snapshot</p>
-                            <h2 class="section-heading__title">Selected Context</h2>
-                        </div>
-                        <dl id="metric-list" class="metric-list"></dl>
-                    </section>
-                </div>
-
-                <div class="details-grid details-grid--secondary">
-                    <!-- Longer method / interpretation copy lives below the main dashboard row. -->
-                    <section class="detail-card">
+                    <section class="detail-card panel-row__card">
                         <div>
                             <div class="section-heading">
                                 <p class="section-heading__eyebrow">Interpretation</p>
@@ -243,6 +236,15 @@
                             </div>
                             <p id="detail-copy" class="detail-copy"></p>
                         </div>
+                    </section>
+
+                    <section class="detail-card detail-card--snapshot panel-row__card">
+                        <!-- Compact metric readout for the current origin / place / filter state. -->
+                        <div class="section-heading">
+                            <p class="section-heading__eyebrow">Snapshot</p>
+                            <h2 class="section-heading__title">Selected Context</h2>
+                        </div>
+                        <dl id="metric-list" class="metric-list"></dl>
                     </section>
                 </div>
             </section>

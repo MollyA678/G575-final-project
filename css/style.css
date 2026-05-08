@@ -64,77 +64,18 @@ button {
     padding: 22px;
 }
 
-/* Top-level narrative framing and view switching. */
+/* Top-level title bar: full-width title on the left, view switch pinned right.
+   The eyebrow + subtitle copy that lived here previously was migrated to the
+   welcome modal, so the hero is now a single horizontal row at the top of
+   the page. */
 .hero {
     display: grid;
-    gap: 14px;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    align-items: start;
-    margin-bottom: 16px;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    margin-bottom: 18px;
 }
 
-.hero__rail {
-    display: grid;
-    gap: 14px;
-    align-self: start;
-    justify-self: end;
-    width: 100%;
-    max-width: 340px;
-}
-
-.hero__rail .view-switch {
-    justify-self: end;
-}
-
-/*
-    The hero info stack lives in the right rail under the view switch.
-    It hosts the "How to Read This" and "Visible Records" cards that used
-    to sit at the bottom of the USA map. Hidden by default so it does not
-    take vertical space until the user has selected an origin + place.
-*/
-.hero-info-stack {
-    display: grid;
-    gap: 12px;
-    width: 100%;
-    transition: opacity 240ms ease, transform 240ms ease;
-}
-
-.hero-info-stack[data-hero-state="hidden"] {
-    opacity: 0;
-    transform: translateY(-6px);
-    pointer-events: none;
-    /* Collapse to zero height so the hero stays compact during the guided state */
-    max-height: 0;
-    overflow: hidden;
-    margin: 0;
-}
-
-.hero-info-stack[data-hero-state="visible"] {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.hero-info-card {
-    /* Slightly tighter than the in-map annotation cards so they read well at this size */
-    padding: 14px 16px;
-}
-
-.hero-info-card .annotation-card__metric {
-    margin: 6px 0 4px;
-    font-size: 1.85rem;
-}
-
-.hero-info-card p {
-    font-size: 0.88rem;
-    line-height: 1.45;
-}
-
-.hero__copy {
-    display: grid;
-    gap: 4px;
-}
-
-.hero__eyebrow,
 .section-heading__eyebrow {
     margin: 0 0 6px;
     font-size: 0.78rem;
@@ -147,22 +88,16 @@ button {
 
 .hero__title {
     margin: 0;
-    max-width: 18ch;
-    line-height: 0.92;
+    /* Removed the 18ch max-width: with no subtitle below, the title can now
+       flow along the top of the page on one or two lines instead of being
+       forced into a tall four-line block. */
+    line-height: 1.02;
     font-family: "Avenir Next Condensed", "Arial Narrow", "Avenir Next", sans-serif;
-    font-size: clamp(2.25rem, 4.4vw, 4rem);
+    font-size: clamp(1.85rem, 3.4vw, 2.85rem);
     text-wrap: balance;
     letter-spacing: 0.02em;
     text-transform: uppercase;
     text-shadow: 0 0 24px rgba(85, 231, 255, 0.16);
-}
-
-.hero__subtitle {
-    max-width: 78ch;
-    margin: 8px 0 0;
-    color: var(--muted);
-    font-size: 0.96rem;
-    line-height: 1.5;
 }
 
 .view-switch {
@@ -223,6 +158,35 @@ button {
 
 .panel-row--analysis {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+}
+
+/*
+    Bottom row beneath the map: three peer cards in a single line —
+    Visible Records (compact metric), Story Notes (interpretation copy),
+    and Selected Context (snapshot dl). They share a flexible layout so
+    the prose card breathes while the two metric cards stay readable.
+*/
+.panel-row--bottom {
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.4fr) minmax(240px, 1fr);
+    margin-top: 18px;
+    align-items: stretch;
+}
+
+.panel-row--bottom .panel-row__card {
+    height: 100%;
+}
+
+.panel-row--bottom .annotation-card__metric {
+    /* Slightly toned-down from the original 2.25rem so the metric balances
+       against the prose card next to it without dominating the row. */
+    font-size: 2rem;
+    margin: 6px 0 6px;
+}
+
+.panel-row--bottom .annotation-card p,
+.panel-row--bottom .detail-copy {
+    font-size: 0.92rem;
+    line-height: 1.55;
 }
 
 .panel-card,
@@ -2125,22 +2089,20 @@ button {
         grid-template-columns: 1fr;
     }
 
-    /* Hero collapses to a single column so title, view switch, and info cards stack vertically */
-    .hero {
+    /* The bottom row collapses to stacked cards once the viewport gets too
+       narrow for three peers to share a line comfortably. */
+    .panel-row--bottom {
         grid-template-columns: 1fr;
     }
 
-    .hero__rail {
-        justify-self: stretch;
-        max-width: none;
-    }
-
-    .hero__rail .view-switch {
-        justify-self: start;
+    /* Hero stays 2-col (title + view switch) until very narrow viewports
+       handled by the second media query below. */
+    .hero {
+        gap: 14px;
     }
 
     .view-switch {
-        justify-self: start;
+        justify-self: end;
     }
 
     .map-shell {

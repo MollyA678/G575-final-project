@@ -2168,16 +2168,14 @@ function renderUsaView(origin, place) {
     const getDistanceColor = (distanceKm) =>
         mixColors("#63ebff", "#ff4fb8", (distanceKm || 0) / maxDistanceKm, 0.96);
 
-    // The "How To Read This" + "Visible Records" cards used to render at the
-    // bottom of the USA map. They now live in the hero rail at the top of
-    // the page, populated here with the live record count so they react to
-    // every filter change in lockstep with the map.
+    // The "Visible Records" card lives permanently below the map. It used
+    // to render inside the USA map's annotation row; promoting it to the
+    // bottom panel-row means it stays in lockstep with the live filter
+    // state without competing with the map for vertical space.
     renderHeroAnnotations({
         visibleCount: visiblePoints.length,
-        summaryText:  `${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}`,
-        howToText:    "The bright anchor marks the selected GNIS reference record for this name. Every other visible point is routed from that anchor, and both color and local spread use distance from the anchor record rather than a hypothetical entry corridor."
+        summaryText:  `${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}`
     });
-    setHeroAnnotationsVisible(true);
 
     const routes = visiblePoints
         .map((point) => {
@@ -2874,14 +2872,20 @@ function renderVizStage(origin, place) {
         : viewConfig.description(origin, place);
 
     if (state.selectedView === "usa") {
-        // renderUsaView() is responsible for showing + populating the hero info stack.
+        // renderUsaView() populates the Visible Records card itself with
+        // anchor-aware copy ("regional filters / proxy eras / focused on …").
         elements.vizStage.innerHTML = renderUsaView(origin, place);
         return;
     }
 
-    // Global / Local views keep their own annotation cards inside the map area,
-    // so the hero info stack (USA-specific) hides itself here.
-    setHeroAnnotationsVisible(false);
+    // Global / Local views also feed the Visible Records card so the bottom
+    // row stays in sync regardless of which view is active. Filter context
+    // is identical — only the visualization differs.
+    const visibleContext = buildVisibleContext(place);
+    renderHeroAnnotations({
+        visibleCount: visibleContext.visiblePoints.length,
+        summaryText:  `${state.activeFeatures.size} regional filters active · ${state.activeEras.size} proxy eras active${state.focusedState ? ` · focused on ${state.focusedState}` : ""}`
+    });
 
     if (state.selectedView === "local") {
         elements.vizStage.innerHTML = renderLocalView(origin, place);
@@ -2926,28 +2930,27 @@ function renderDetails(origin, place) {
         .join("");
 }
 
-function renderHeroAnnotations({ visibleCount, summaryText, howToText } = {}) {
-    // Populates the "How To Read This" + "Visible Records" cards that live
-    // in the hero rail (top of page). These cards used to render at the
-    // bottom of the USA map; promoting them keeps the map area cleaner and
-    // surfaces the live record count + reading guide as soon as the page
-    // scrolls into view.
+function renderHeroAnnotations({ visibleCount, summaryText } = {}) {
+    // Populates the "Visible Records" card that lives in the bottom row
+    // beneath the map. The companion "How To Read This" card was removed —
+    // its content was migrated into the welcome modal so the map area can
+    // breathe and the bottom row holds three peer cards instead of two.
     const metricEl  = document.getElementById("hero-records-metric");
     const summaryEl = document.getElementById("hero-records-summary");
-    const howToEl   = document.getElementById("hero-howto-text");
 
     if (metricEl)  metricEl.textContent  = String(visibleCount ?? "—");
     if (summaryEl) summaryEl.textContent = summaryText ?? "";
-    if (howToText && howToEl) howToEl.textContent = howToText;
 }
 
-function setHeroAnnotationsVisible(isVisible) {
-    // Single source of truth for whether the hero info stack is shown.
-    // Hidden during the guided state and on Global/Local views, visible
-    // once the user has both an origin and a place name selected on USA.
-    const stack = document.getElementById("hero-info-stack");
-    if (!stack) return;
-    stack.dataset.heroState = isVisible ? "visible" : "hidden";
+function clearHeroAnnotations() {
+    // Reset the Visible Records card to its placeholder state. Used during
+    // the guided state and on Global/Local views where "visible records"
+    // doesn't map cleanly onto the active visualization.
+    const metricEl  = document.getElementById("hero-records-metric");
+    const summaryEl = document.getElementById("hero-records-summary");
+
+    if (metricEl)  metricEl.textContent  = "—";
+    if (summaryEl) summaryEl.textContent = "Select a country and a place name to load records.";
 }
 
 function renderGuidedState(step) {
@@ -3020,9 +3023,10 @@ function renderGuidedState(step) {
         elements.placeList.innerHTML = `<div class="empty-state guided-placeholder">Choose an origin above to see its place names.</div>`;
     }
 
-    // Hero info stack stays hidden during the guided state — the cards are
-    // only meaningful once a real anchor record is being rendered on the map.
-    setHeroAnnotationsVisible(false);
+    // The "Visible Records" card sits permanently below the map. During
+    // the guided state we reset it to its placeholder copy (em-dash + a
+    // friendly prompt) so it doesn't display a stale count.
+    clearHeroAnnotations();
 
     // Drive pulse-glow onto the WHOLE relevant floating panel section
     // (Search & Origins for step 1, Related Places for step 2). Earlier
@@ -3050,8 +3054,9 @@ function renderEmptyState() {
     elements.vizStage.innerHTML = `<div class="empty-state">No view to render.</div>`;
     elements.detailCopy.textContent = "Clear or change the search to restore the prototype views.";
     elements.metricList.innerHTML = "";
-    // No active selection means the hero info stack has nothing to report
-    setHeroAnnotationsVisible(false);
+    // Search returned no results — reset the Visible Records card to its
+    // placeholder copy so the bottom row doesn't show a stale count.
+    clearHeroAnnotations();
 }
 
 function syncViewButtons() {
