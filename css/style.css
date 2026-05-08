@@ -1286,6 +1286,25 @@ button {
     filter: drop-shadow(0 0 10px rgba(85, 231, 255, 0.12));
 }
 
+.network-layer--region {
+    display: none;
+}
+
+.interactive-map[data-local-network-mode="compact"] .network-detail,
+.interactive-map[data-local-network-mode="compact"] .local-inset-note,
+.interactive-map[data-local-network-mode="grouped"] .network-detail,
+.interactive-map[data-local-network-mode="grouped"] .local-inset-note {
+    display: none;
+}
+
+.interactive-map[data-local-network-mode="grouped"] .network-layer--state {
+    display: none;
+}
+
+.interactive-map[data-local-network-mode="grouped"] .network-layer--region {
+    display: inline;
+}
+
 /* Default labels off pointer-events so the polygons underneath stay clickable, then re-enable on label types that act as buttons */
 .map-label-layer {
     pointer-events: none;
@@ -1694,6 +1713,19 @@ button {
 
 .network-node.is-summary {
     stroke: rgba(255, 255, 255, 0.94);
+}
+
+.network-node--region {
+    stroke: rgba(245, 250, 255, 0.94);
+    stroke-width: 2.35;
+    filter: drop-shadow(0 0 16px rgba(85, 231, 255, 0.22));
+}
+
+.local-network-node.node-kind--region .network-label,
+.local-inset-node.node-kind--region .network-label {
+    font-size: 15px;
+    font-weight: 720;
+    letter-spacing: 0.06em;
 }
 
 .network-node.is-selected {

@@ -115,6 +115,88 @@ const NETWORK_LAYOUT_LIMITS = {
     regionEdgeStateNodes: 6
 };
 
+const LOCAL_NETWORK_LOD_THRESHOLDS = {
+    main: {
+        groupedMax: 1.02,
+        compactMax: 1.32
+    },
+    inset: {
+        groupedMax: 1.12,
+        compactMax: 1.5
+    }
+};
+
+// Broad grouped labels use familiar U.S. regional language instead of the raw GNIS filter buckets.
+const LOCAL_NETWORK_BROAD_REGIONS = [
+    {
+        key: "northeast",
+        label: "Northeast",
+        states: [
+            "Connecticut", "Delaware", "Maine", "Maryland", "Massachusetts", "New Hampshire",
+            "New Jersey", "New York", "Pennsylvania", "Rhode Island", "Vermont"
+        ]
+    },
+    {
+        key: "midwest",
+        label: "Midwest",
+        states: [
+            "Illinois", "Indiana", "Iowa", "Kansas", "Michigan", "Minnesota", "Missouri",
+            "Nebraska", "North Dakota", "Ohio", "South Dakota", "Wisconsin"
+        ]
+    },
+    {
+        key: "south",
+        label: "South",
+        states: [
+            "Alabama", "Arkansas", "Florida", "Georgia", "Kentucky", "Louisiana", "Mississippi",
+            "North Carolina", "Oklahoma", "South Carolina", "Tennessee", "Texas", "Virginia",
+            "West Virginia"
+        ]
+    },
+    {
+        key: "mountain-west",
+        label: "Mountain West",
+        states: [
+            "Arizona", "Colorado", "Idaho", "Montana", "Nevada", "New Mexico", "Utah", "Wyoming"
+        ]
+    },
+    {
+        key: "west-coast",
+        label: "West Coast",
+        states: ["California", "Oregon", "Washington"]
+    }
+];
+
+const LOCAL_NETWORK_REGION_ORDER = LOCAL_NETWORK_BROAD_REGIONS.map((region) => region.key);
+
+const LOCAL_NETWORK_BROAD_REGION_LABELS = Object.fromEntries(
+    LOCAL_NETWORK_BROAD_REGIONS.map((region) => [region.key, region.label])
+);
+
+const LOCAL_NETWORK_STATE_TO_BROAD_REGION = LOCAL_NETWORK_BROAD_REGIONS.reduce((memo, region) => {
+    region.states.forEach((stateName) => {
+        memo[stateName] = region.key;
+    });
+    return memo;
+}, {});
+
+const LOCAL_NETWORK_REGION_ANGLES = {
+    main: {
+        northeast: -18,
+        midwest: 18,
+        south: 76,
+        "mountain-west": 128,
+        "west-coast": 158
+    },
+    inset: {
+        northeast: -14,
+        midwest: 14,
+        south: 80,
+        "mountain-west": 132,
+        "west-coast": 162
+    }
+};
+
 const STAT_OPTIONS = {
     timeline: {
         title: (place) => `${place.name} cumulative spread by statehood year`,
@@ -151,7 +233,7 @@ const VIEW_COPY = {
         kicker: "Local spread view",
         title: (origin, place) => `${place.name} state spread`,
         description: (origin) =>
-            `This diagram keeps ${origin.name} as the contextual origin group, then spreads state nodes by their average distance from the selected anchor record. Node size shows visible record count.`
+            `This diagram keeps ${origin.name} as the contextual origin group, then spreads state nodes by their average distance from the selected anchor record. Zooming out first hides distance labels, then collapses states into familiar U.S. regions such as the Northeast, Midwest, South, Mountain West, and West Coast.`
     }
 };
 
@@ -435,6 +517,28 @@ function buildDistancePlacement(seedKey, index, count, options) {
     };
 }
 
+function buildRegionPlacement(seedKey, regionKey, normalizedDistance, selectedNode, context = "main") {
+    const inset = context === "inset";
+    const angleMap = inset ? LOCAL_NETWORK_REGION_ANGLES.inset : LOCAL_NETWORK_REGION_ANGLES.main;
+    const angle = (angleMap[regionKey] ?? 42)
+        + seededRange(seedKey, inset ? -2.6 : -3.2, inset ? 2.6 : 3.2, 1);
+    const radiusBase = inset ? 106 : 214;
+    const radiusSpread = inset ? 24 : 44;
+    const radius = radiusBase
+        + normalizedDistance * radiusSpread
+        + seededRange(seedKey, inset ? -3.5 : -6, inset ? 3.5 : 6, 2);
+    const point = polarPoint(selectedNode.x, selectedNode.y + (inset ? 8 : 10), radius, angle);
+
+    return {
+        x: point.x,
+        y: point.y,
+        driftX: seededRange(seedKey, inset ? -4.2 : -6, inset ? 4.2 : 6, 3),
+        driftY: seededRange(seedKey, inset ? -4.2 : -6, inset ? 4.2 : 6, 4),
+        driftDuration: seededRange(seedKey, inset ? 8.5 : 11, inset ? 12.5 : 16.5, 5),
+        driftDelay: seededRange(seedKey, -5, 0, 6)
+    };
+}
+
 function getCurvedNetworkGeometry(from, to, amount = 40, direction = 1) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
@@ -585,14 +689,30 @@ function getNetworkLabelLayout(node, context = "main") {
     const gap = context === "inset" ? 10 : 12;
     const baseline = context === "inset" ? 4 : 5;
     const belowGap = context === "inset" ? 18 : 20;
+    const aboveGap = context === "inset" ? 12 : 14;
+    const frameHeight = context === "inset" ? 290 : 560;
 
-    if (node.kind === "selected" || node.kind === "origin" || node.kind === "region") {
+    if (node.kind === "selected" || node.kind === "origin") {
         const labelY = node.y + node.size + belowGap;
         return {
             anchor: "middle",
             labelX: node.x,
             labelY,
             detailY: labelY + 15
+        };
+    }
+
+    if (node.kind === "region") {
+        const wouldOverflowBottom = node.y + node.size + belowGap + 18 > frameHeight - 14;
+        const labelY = wouldOverflowBottom
+            ? node.y - node.size - aboveGap
+            : node.y + node.size + belowGap;
+
+        return {
+            anchor: "middle",
+            labelX: node.x,
+            labelY,
+            detailY: wouldOverflowBottom ? labelY - 14 : labelY + 15
         };
     }
 
@@ -611,6 +731,26 @@ function getNetworkLabelLayout(node, context = "main") {
         labelY: node.y + baseline,
         detailY: node.y + baseline + 15
     };
+}
+
+function getLocalNetworkMode(mapType, scale = state.mapViews[mapType]?.scale || 1) {
+    const thresholds = String(mapType).startsWith("local-inset-")
+        ? LOCAL_NETWORK_LOD_THRESHOLDS.inset
+        : LOCAL_NETWORK_LOD_THRESHOLDS.main;
+
+    if (state.focusedState) {
+        return scale > thresholds.compactMax ? "detail" : "compact";
+    }
+
+    if (scale <= thresholds.groupedMax) {
+        return "grouped";
+    }
+
+    if (scale <= thresholds.compactMax) {
+        return "compact";
+    }
+
+    return "detail";
 }
 
 function getOriginEntries() {
@@ -1009,6 +1149,7 @@ function applyMapTransform(mapType) {
     syncMapOverlays(mapType);
     syncLocalStaticArtifacts(mapType);
     syncScaledLabels(mapType);
+    syncLocalNetworkLod(mapType);
 
     if (readout) {
         readout.textContent = `${Math.round(state.mapViews[mapType].scale * 100)}%`;
@@ -1120,6 +1261,20 @@ function syncLocalStaticArtifacts(mapType) {
             `translate(${anchorX.toFixed(2)} ${anchorY.toFixed(2)}) scale(${inverse.toFixed(4)}) translate(${-anchorX.toFixed(2)} ${-anchorY.toFixed(2)})`
         );
     });
+}
+
+function syncLocalNetworkLod(mapType) {
+    if (mapType !== "local-main" && !String(mapType).startsWith("local-inset-")) {
+        return;
+    }
+
+    const svg = document.querySelector(`[data-map-svg="${mapType}"]`);
+
+    if (!svg) {
+        return;
+    }
+
+    svg.dataset.localNetworkMode = getLocalNetworkMode(mapType);
 }
 
 function syncScaledLabels(mapType) {
@@ -1782,6 +1937,121 @@ function buildDistanceStateEntries(points) {
         );
 }
 
+function buildProxyYearExtent(entries) {
+    const years = entries
+        .map((entry) => entry.proxyYear)
+        .filter((year) => Number.isFinite(year));
+
+    if (!years.length) {
+        return { min: 0, max: 1 };
+    }
+
+    return {
+        min: Math.min(...years),
+        max: Math.max(...years)
+    };
+}
+
+function getBroadRegionForState(stateName, fallbackRegion = "") {
+    if (LOCAL_NETWORK_STATE_TO_BROAD_REGION[stateName]) {
+        return LOCAL_NETWORK_STATE_TO_BROAD_REGION[stateName];
+    }
+
+    return {
+        northeast: "northeast",
+        midwest: "midwest",
+        south: "south",
+        west: "mountain-west"
+    }[String(fallbackRegion).toLowerCase()] || null;
+}
+
+function buildRegionNetworkEntries(distanceStateEntries) {
+    const entriesByRegion = distanceStateEntries.reduce((memo, entry) => {
+        const regionKey = getBroadRegionForState(entry.state, entry.region);
+
+        if (!regionKey) {
+            return memo;
+        }
+
+        const current = memo.get(regionKey) || {
+            region: regionKey,
+            label: LOCAL_NETWORK_BROAD_REGION_LABELS[regionKey] || regionKey,
+            count: 0,
+            stateCount: 0,
+            states: [],
+            weightedDistanceKm: 0,
+            weightedProxyYear: 0,
+            proxyYearWeight: 0
+        };
+
+        current.count += entry.count;
+        current.stateCount += 1;
+        current.states.push(entry.state);
+        current.weightedDistanceKm += (entry.avgDistanceKm || 0) * entry.count;
+
+        if (Number.isFinite(entry.proxyYear)) {
+            current.weightedProxyYear += entry.proxyYear * entry.count;
+            current.proxyYearWeight += entry.count;
+        }
+
+        memo.set(regionKey, current);
+        return memo;
+    }, new Map());
+
+    return Array.from(entriesByRegion.values())
+        .map((entry) => ({
+            ...entry,
+            states: Array.from(new Set(entry.states)).sort((stateA, stateB) => stateA.localeCompare(stateB)),
+            avgDistanceKm: entry.count ? entry.weightedDistanceKm / entry.count : 0,
+            proxyYear: entry.proxyYearWeight ? entry.weightedProxyYear / entry.proxyYearWeight : null
+        }))
+        .sort((entryA, entryB) =>
+            LOCAL_NETWORK_REGION_ORDER.indexOf(entryA.region) - LOCAL_NETWORK_REGION_ORDER.indexOf(entryB.region) ||
+            entryB.count - entryA.count
+        );
+}
+
+function buildRegionAggregateNodes(regionEntries, selectedNode, origin, place, maxDistanceKm, context, seedRoot) {
+    const maxRegionCount = Math.max(1, ...regionEntries.map((entry) => entry.count || 0));
+
+    return regionEntries.map((entry) => {
+        const normalizedDistance = clamp((entry.avgDistanceKm || 0) / maxDistanceKm, 0, 1);
+        const countRatio = clamp((entry.count || 0) / maxRegionCount, 0, 1);
+        const placement = buildRegionPlacement(
+            `${seedRoot}:region:${entry.region}`,
+            entry.region,
+            normalizedDistance,
+            selectedNode,
+            context
+        );
+        const size = context === "inset"
+            ? 16 + countRatio * 20
+            : 22 + countRatio * 30;
+        const color = mixColors("#63ebff", "#ff4fb8", normalizedDistance, 0.96);
+
+        return {
+            id: `region-${entry.region}`,
+            kind: "region",
+            ...placement,
+            size,
+            color,
+            label: entry.label,
+            detail: "",
+            count: entry.count,
+            region: entry.region,
+            states: entry.states,
+            avgDistanceKm: entry.avgDistanceKm,
+            proxyYear: entry.proxyYear,
+            tooltip: `${entry.label} · ${entry.count} visible places across ${entry.stateCount} states`,
+            linkEntries: [
+                ["place", place.id],
+                ["origin", origin.id],
+                ...entry.states.map((stateName) => ["state", stateName])
+            ],
+            focusEntries: []
+        };
+    });
+}
 // Keep the legacy short/medium/long summary available for older text copy while newer charts use direct bins.
 function buildDistanceBars(points) {
     return ["short", "medium", "long"].reduce((memo, band) => {
@@ -2373,14 +2643,18 @@ function buildLocalNetwork(origin, place) {
         };
     });
 
-    const nodes = [
-        originNode,
+    const regionEntries = buildRegionNetworkEntries(visibleContext.distanceStateEntries);
+    const regionNodes = buildRegionAggregateNodes(
+        regionEntries,
         selectedNode,
-        ...stateNodes
-    ];
-    const edges = [];
-
-    edges.push({
+        origin,
+        place,
+        maxDistanceKm,
+        "main",
+        seedRoot
+    );
+    const baseNodes = [originNode, selectedNode];
+    const baseEdges = [{
         id: "origin-selected",
         from: "origin",
         to: "selected",
@@ -2388,8 +2662,8 @@ function buildLocalNetwork(origin, place) {
         tooltip: "",
         linkEntries: [["origin", origin.id], ["place", place.id]],
         focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
-    });
-    stateNodes.forEach((node) => edges.push({
+    }];
+    const stateEdges = stateNodes.map((node) => ({
         id: `selected-${node.id}`,
         from: "selected",
         to: node.id,
@@ -2398,8 +2672,29 @@ function buildLocalNetwork(origin, place) {
         linkEntries: node.linkEntries,
         focusEntries: [["focus-edge", `selected-state:${node.state}`]]
     }));
+    const regionEdges = regionNodes.map((node) => ({
+        id: `selected-${node.id}`,
+        from: "selected",
+        to: node.id,
+        primary: true,
+        color: getProxyYearColor(node.proxyYear, 0.94, visibleContext.proxyYearExtent),
+        tooltip: `${node.label} · ${node.count} visible places`,
+        linkEntries: node.linkEntries,
+        focusEntries: []
+    }));
+    const nodes = [...baseNodes, ...stateNodes, ...regionNodes];
 
-    return { nodes, edges, selectedNode, visibleCount: visibleContext.visiblePoints.length };
+    return {
+        nodes,
+        baseNodes,
+        stateNodes,
+        regionNodes,
+        baseEdges,
+        stateEdges,
+        regionEdges,
+        selectedNode,
+        visibleCount: visibleContext.visiblePoints.length
+    };
 }
 
 function buildInsetLocalNetwork(origin, place) {
@@ -2485,12 +2780,18 @@ function buildInsetLocalNetwork(origin, place) {
         };
     });
 
-    const nodes = [
-        originNode,
+    const regionEntries = buildRegionNetworkEntries(visibleContext.distanceStateEntries);
+    const regionNodes = buildRegionAggregateNodes(
+        regionEntries,
         selectedNode,
-        ...stateNodes
-    ];
-    const edges = [
+        origin,
+        place,
+        maxDistanceKm,
+        "inset",
+        seedRoot
+    );
+    const baseNodes = [originNode, selectedNode];
+    const baseEdges = [
         {
             id: "origin-selected",
             from: "origin",
@@ -2499,8 +2800,9 @@ function buildInsetLocalNetwork(origin, place) {
             tooltip: "",
             linkEntries: [["origin", origin.id], ["place", place.id]],
             focusEntries: [["focus-relation", `origin-selected:${origin.id}:${place.id}`]]
-        },
-        ...stateNodes.map((node) => ({
+        }
+    ];
+    const stateEdges = stateNodes.map((node) => ({
             id: `selected-${node.id}`,
             from: "selected",
             to: node.id,
@@ -2508,10 +2810,29 @@ function buildInsetLocalNetwork(origin, place) {
             tooltip: "",
             linkEntries: node.linkEntries,
             focusEntries: [["focus-edge", `selected-state:${node.state}`]]
-        }))
-    ];
+        }));
+    const regionEdges = regionNodes.map((node) => ({
+        id: `selected-${node.id}`,
+        from: "selected",
+        to: node.id,
+        primary: true,
+        color: getProxyYearColor(node.proxyYear, 0.94, visibleContext.proxyYearExtent),
+        tooltip: `${node.label} · ${node.count} visible places`,
+        linkEntries: node.linkEntries,
+        focusEntries: []
+    }));
+    const nodes = [...baseNodes, ...stateNodes, ...regionNodes];
 
-    return { nodes, edges, visibleCount: visibleContext.visiblePoints.length };
+    return {
+        nodes,
+        baseNodes,
+        stateNodes,
+        regionNodes,
+        baseEdges,
+        stateEdges,
+        regionEdges,
+        visibleCount: visibleContext.visiblePoints.length
+    };
 }
 
 function renderNetworkEdge(edge, nodesById, context = "main") {
@@ -2665,9 +2986,11 @@ function renderLocalNetworkNode(node) {
         `network-node--${node.kind}`
     ].filter(Boolean).join(" ");
     const nodeStyle = `--node-color:${node.color};--node-glow:${colorWithAlpha(node.color, node.selected ? 0.38 : 0.22)};--node-ring:${colorWithAlpha(node.color, node.selected ? 0.92 : 0.66)};${getOrganicMotionStyle(node)}`;
-    const visibleCoreRadius = node.kind === "selected" ? 2.25 : node.kind === "origin" ? 1.85 : 1.45;
-    const shellRadius = visibleCoreRadius + (node.kind === "selected" ? 1.45 : 0.95);
-    const glowRadius = shellRadius * 1.75;
+    const visibleCoreRadius = node.kind === "region"
+        ? Math.max(5.8, node.size * 0.25)
+        : node.kind === "selected" ? 2.25 : node.kind === "origin" ? 1.85 : 1.45;
+    const shellRadius = visibleCoreRadius + (node.kind === "region" ? 2.4 : node.kind === "selected" ? 1.45 : 0.95);
+    const glowRadius = shellRadius * (node.kind === "region" ? 2.12 : 1.75);
 
     return `
         <g data-static-anchor-x="${node.x.toFixed(2)}" data-static-anchor-y="${node.y.toFixed(2)}">
@@ -2704,9 +3027,11 @@ function renderInsetNetworkNode(node) {
         `network-node--${node.kind}`
     ].filter(Boolean).join(" ");
     const nodeStyle = `--node-color:${node.color};--node-glow:${colorWithAlpha(node.color, node.kind === "selected" ? 0.34 : 0.2)};--node-ring:${colorWithAlpha(node.color, node.kind === "selected" ? 0.88 : 0.62)};${getOrganicMotionStyle(node)}`;
-    const visibleCoreRadius = node.kind === "selected" ? 1.92 : node.kind === "origin" ? 1.6 : 1.28;
-    const shellRadius = visibleCoreRadius + (node.kind === "selected" ? 1.18 : 0.82);
-    const glowRadius = shellRadius * 1.68;
+    const visibleCoreRadius = node.kind === "region"
+        ? Math.max(4.4, node.size * 0.24)
+        : node.kind === "selected" ? 1.92 : node.kind === "origin" ? 1.6 : 1.28;
+    const shellRadius = visibleCoreRadius + (node.kind === "region" ? 1.9 : node.kind === "selected" ? 1.18 : 0.82);
+    const glowRadius = shellRadius * (node.kind === "region" ? 1.98 : 1.68);
 
     return `
         <g data-static-anchor-x="${node.x.toFixed(2)}" data-static-anchor-y="${node.y.toFixed(2)}">
@@ -2740,6 +3065,7 @@ function renderLocalInset(origin, place, contextLabel) {
     const nodeLookup = new Map(network.nodes.map((node) => [node.id, node]));
     const panZoomType = `local-inset-${contextLabel}`;
     const clipId = `local-inset-clip-${contextLabel}`;
+    const networkMode = getLocalNetworkMode(panZoomType);
 
     return `
         <aside class="local-inset-card local-inset-card--${contextLabel} ${collapsed ? "is-collapsed" : ""}" data-local-inset-view="${contextLabel}">
@@ -2765,17 +3091,29 @@ function renderLocalInset(origin, place, contextLabel) {
             </div>
 
             <div class="local-inset-card__content">
-                <svg class="local-inset-svg interactive-map" data-map-svg="${panZoomType}" viewBox="0 0 480 290" role="img" aria-label="Linked local inset">
-                    <defs>
-                        <clipPath id="${clipId}">
-                            <rect x="6" y="6" width="468" height="278" rx="22"></rect>
-                        </clipPath>
-                    </defs>
-                    <rect class="map-surface" x="6" y="6" width="468" height="278" rx="22"></rect>
-                    <g clip-path="url(#${clipId})">
-                        <g class="map-zoom-layer" data-map-zoom-layer="${panZoomType}" transform="${getMapTransformString(panZoomType)}">
-                            ${network.edges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
-                            ${network.nodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                <div class="local-inset-card__viewport">
+                    <svg class="local-inset-svg interactive-map" data-map-svg="${panZoomType}" data-local-network-mode="${networkMode}" viewBox="0 0 480 290" role="img" aria-label="Linked local inset">
+                        <defs>
+                            <clipPath id="${clipId}">
+                                <rect x="6" y="6" width="468" height="278" rx="22"></rect>
+                            </clipPath>
+                        </defs>
+                        <rect class="map-surface" x="6" y="6" width="468" height="278" rx="22"></rect>
+                        <g clip-path="url(#${clipId})">
+                            <g class="map-zoom-layer" data-map-zoom-layer="${panZoomType}" transform="${getMapTransformString(panZoomType)}">
+                                <g class="network-layer network-layer--always">
+                                    ${network.baseEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
+                                    ${network.baseNodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                                </g>
+                                <g class="network-layer network-layer--state">
+                                    ${network.stateEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
+                                    ${network.stateNodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                                </g>
+                                <g class="network-layer network-layer--region">
+                                    ${network.regionEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "inset")).join("")}
+                                    ${network.regionNodes.map((node) => renderInsetNetworkNode(node)).join("")}
+                                </g>
+                            </g>
                         </g>
                     </g>
                     ${
@@ -2836,6 +3174,7 @@ function renderLocalView(origin, place) {
     const nodeLookup = new Map(network.nodes.map((node) => [node.id, node]));
     const panZoomType = "local-main";
     const clipId = "local-main-clip";
+    const networkMode = getLocalNetworkMode(panZoomType);
 
     return `
         <div class="viz-layout viz-layout--local">
@@ -2856,7 +3195,7 @@ function renderLocalView(origin, place) {
                 <div>
                     <div class="viz-frame">
                         ${renderMapControls(panZoomType)}
-                        <svg class="viz-svg interactive-map" data-map-svg="${panZoomType}" viewBox="0 0 1000 560" role="img" aria-label="Local network view">
+                        <svg class="viz-svg interactive-map" data-map-svg="${panZoomType}" data-local-network-mode="${networkMode}" viewBox="0 0 1000 560" role="img" aria-label="Local network view">
                             <defs>
                                 <clipPath id="${clipId}">
                                     <rect x="20" y="20" width="960" height="520" rx="34"></rect>
@@ -2866,11 +3205,21 @@ function renderLocalView(origin, place) {
                             ${buildGrid(1000, 560, 84)}
                             <g clip-path="url(#${clipId})">
                                 <g class="map-zoom-layer" data-map-zoom-layer="${panZoomType}" transform="${getMapTransformString(panZoomType)}">
-                                    ${network.edges.map((edge) => renderNetworkEdge(edge, nodeLookup, "main")).join("")}
-                                    ${network.nodes.map((node) => renderLocalNetworkNode(node)).join("")}
+                                    <g class="network-layer network-layer--always">
+                                        ${network.baseEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "main")).join("")}
+                                        ${network.baseNodes.map((node) => renderLocalNetworkNode(node)).join("")}
+                                    </g>
+                                    <g class="network-layer network-layer--state">
+                                        ${network.stateEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "main")).join("")}
+                                        ${network.stateNodes.map((node) => renderLocalNetworkNode(node)).join("")}
+                                    </g>
+                                    <g class="network-layer network-layer--region">
+                                        ${network.regionEdges.map((edge) => renderNetworkEdge(edge, nodeLookup, "main")).join("")}
+                                        ${network.regionNodes.map((node) => renderLocalNetworkNode(node)).join("")}
+                                    </g>
                                 </g>
                             </g>
-                            <text class="chart-note" x="48" y="540">Top: origin group. Center: selected name anchored to ${place.anchorRecord.label}. Outer state nodes spread by average anchor distance, and each label shows mean kilometers plus visible count.</text>
+                            <text class="chart-note" x="48" y="540">Zooming out hides state distances first, then collapses the network into familiar U.S. regions. Larger broad-region nodes mean more visible places.</text>
                             ${
                                 !network.visibleCount
                                     ? `<text class="chart-note" x="500" y="500" text-anchor="middle">Current filters remove all visible state links for this name.</text>`
@@ -2891,6 +3240,10 @@ function renderLocalView(origin, place) {
                         <span class="community-chip community-chip--wide" style="--chip-color:rgba(244,250,255,0.92)">
                             <span class="community-chip__dot"></span>
                             <span>one edge = one state with visible records</span>
+                        </span>
+                        <span class="community-chip community-chip--wide" style="--chip-color:rgba(130, 231, 255, 0.92)">
+                            <span class="community-chip__dot"></span>
+                            <span>zoomed-out broad-region nodes scale with visible place count</span>
                         </span>
                     </div>
                 </div>
