@@ -1463,16 +1463,18 @@ function renderWorldPolygons(origin, options = {}) {
 function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), options = {}) {
     const showLabels = options.showLabels !== false;
     const detailLevel = options.detailLevel || (options.mapType ? getMapDetailLevel(options.mapType) : "medium");
+    const anchorState = options.anchorState || null;
     const states = SHAPES.usa.states
         .map((shape) => {
             const count = stateCounts.get(shape.name) || 0;
             const isFocused = state.focusedState === shape.name;
+            const isAnchor = anchorState === shape.name;
             const tooltip = count
                 ? `${shape.name} · ${count} visible GNIS record${count === 1 ? "" : "s"}${isFocused ? " · click to clear focus" : " · click to focus this state"}`
                 : `${shape.name}${isFocused ? " · click to clear focus" : " · click to focus this state"}`;
             return `
                 <path
-                    class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""} ${isFocused ? "is-focused" : ""}"
+                    class="us-state-real ${activeStates.has(shape.name) ? "is-active" : ""} ${isFocused ? "is-focused" : ""} ${isAnchor ? "is-anchor-state" : ""}"
                     d="${getShapePathByDetail(shape, detailLevel)}"
                     data-map-detail="usa-state"
                     data-shape-name="${escapeAttr(shape.name)}"
@@ -1490,13 +1492,14 @@ function renderUsaPolygons(activeStates = new Set(), stateCounts = new Map(), op
             .map((shape) => {
                 const count = stateCounts.get(shape.name) || 0;
                 const isFocused = state.focusedState === shape.name;
+                const isAnchor = anchorState === shape.name;
                 const tooltip = count
                     ? `${shape.name} · ${count} visible GNIS record${count === 1 ? "" : "s"}${isFocused ? " · click to clear focus" : " · click to focus this state"}`
                     : `${shape.name}${isFocused ? " · click to clear focus" : " · click to focus this state"}`;
 
                 return `
                     <text
-                        class="state-abbr-label ${activeStates.has(shape.name) ? "is-active" : ""} ${isFocused ? "is-focused" : ""}"
+                        class="state-abbr-label ${activeStates.has(shape.name) ? "is-active" : ""} ${isFocused ? "is-focused" : ""} ${isAnchor ? "is-anchor-state" : ""}"
                         x="${shape.label.x}"
                         y="${shape.label.y}"
                         text-anchor="middle"
@@ -2626,12 +2629,12 @@ function renderUsaView(origin, place) {
                     ${buildGrid(1000, 560, 84)}
                     <g clip-path="url(#${clipId})">
                         <g class="map-zoom-layer" data-map-zoom-layer="usa" transform="${getMapTransformString("usa")}">
-                            ${renderUsaPolygons(activeStates, stateCounts, { mapType: "usa" })}
+                            ${renderUsaPolygons(activeStates, stateCounts, { mapType: "usa", anchorState: anchorRecord.state })}
                         </g>
                         <g class="map-overlay-layer" data-map-overlay-layer="usa">
-                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 8, hub.y - 14)} text-anchor="end" data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}" ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}>${anchorRecord.label}</text>
                             ${routes}
                             ${points}
+                            <text class="map-label map-label--important" ${renderOverlayPointAttrs("usa", hub.x - 8, hub.y - 14)} text-anchor="end" data-tooltip="${escapeAttr(`${anchorRecord.label} · selected anchor record`)}" ${renderLinkKeysAttr([["place", place.id], ["state", anchorRecord.state], ["origin", origin.id]])} ${renderFocusKeysAttr([["focus-point", anchorRecord.id]])}>${anchorRecord.label}</text>
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("usa", 118, 116)}>Pacific</text>
                             <text class="chart-label chart-label--muted map-context-label" ${renderOverlayPointAttrs("usa", 844, 182)} text-anchor="end">Atlantic</text>
                         </g>
@@ -3053,6 +3056,7 @@ function renderLocalNetworkNode(node) {
                 class="${className} node-kind--${node.kind}"
                 ${node.placeId ? `data-place-id="${node.placeId}" tabindex="0" role="button" focusable="true"` : ""}
                 ${node.state ? `data-state-focus="${escapeAttr(node.state)}" tabindex="0" role="button" focusable="true"` : ""}
+                ${node.kind === "region" ? `data-region-zoom="${escapeAttr(node.region || node.label)}" tabindex="0" role="button" focusable="true" data-node-x="${node.x.toFixed(1)}" data-node-y="${node.y.toFixed(1)}"` : ""}
                 ${node.tooltip ? `data-tooltip="${escapeAttr(node.tooltip)}"` : ""}
                 ${renderLinkKeysAttr(node.linkEntries)}
                 ${renderFocusKeysAttr(node.focusEntries)}
@@ -3901,6 +3905,32 @@ function handleClick(event) {
         state.selectedOrigin = nextOrigin;
         state.selectedPlaceId = null;
         renderApp();
+        return;
+    }
+
+    const regionZoomTarget = event.target.closest("[data-region-zoom]");
+    if (regionZoomTarget && elements.vizStage.contains(regionZoomTarget)) {
+        // Zoom local-main past the compactMax threshold so individual state nodes appear,
+        // centering the zoom on the clicked region node's position within the SVG.
+        const mapType = "local-main";
+        const svg = document.querySelector(`[data-map-svg="${mapType}"]`);
+        const targetScale = LOCAL_NETWORK_LOD_THRESHOLDS.main.compactMax + 0.25;
+        const nodeX = parseFloat(regionZoomTarget.dataset.nodeX || 500);
+        const nodeY = parseFloat(regionZoomTarget.dataset.nodeY || 280);
+
+        if (svg) {
+            const rect = svg.getBoundingClientRect();
+            const viewBox = svg.viewBox?.baseVal;
+            const vbW = viewBox?.width  || MAP_VIEWBOX.width;
+            const vbH = viewBox?.height || MAP_VIEWBOX.height;
+            // Convert node SVG coords to screen-space anchor for zoomMapAt
+            const screenX = rect.left + (nodeX / vbW) * rect.width;
+            const screenY = rect.top  + (nodeY / vbH) * rect.height;
+            const svgAnchor = buildSvgPoint(svg, screenX, screenY);
+            zoomMapAt(mapType, targetScale, svgAnchor.x, svgAnchor.y);
+        } else {
+            zoomMapAt(mapType, targetScale, MAP_VIEWBOX.width / 2, MAP_VIEWBOX.height / 2);
+        }
         return;
     }
 

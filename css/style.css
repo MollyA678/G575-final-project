@@ -1363,6 +1363,8 @@ button {
 .country-label {
     font-size: 13px;
     opacity: 0.74;
+    /* Wider stroke creates a dark halo that pushes overlapping labels apart visually */
+    stroke-width: 8px;
 }
 
 .country-label.is-origin {
@@ -1373,6 +1375,19 @@ button {
 .map-label--important {
     font-size: 13px;
     letter-spacing: 0;
+}
+
+/* Anchor state gets a warm gold tint so it reads as distinct from the cyan active states */
+.us-state-real.is-anchor-state {
+    fill: rgba(255, 210, 80, 0.13);
+    stroke: rgba(255, 210, 80, 0.55);
+    stroke-width: 1.8px;
+    filter: drop-shadow(0 0 10px rgba(255, 210, 80, 0.14));
+}
+
+.state-abbr-label.is-anchor-state {
+    fill: rgba(255, 218, 100, 0.95);
+    opacity: 1;
 }
 
 .point-label--muted,
