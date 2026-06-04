@@ -66,16 +66,16 @@ of immigration, she chooses to look into German names first, choosing "Berlin"
 as her first subject. She is shocked to discover that the name initially came 
 over with settlers much earlier than she would assume, with at least three 
 places named Berlin before the year 1800! She uses the toggle to show her 
-beyond the initial names,and finds, with the help of the coordinated bar 
-chart,that diffusion of the name spiked durirng exactly the time she is 
+beyond the initial names, and finds, with the help of the coordinated bar 
+chart, that diffusion of the name spiked during exactly the time she is 
 studying, especially when she filters for just city and street names. She 
-hovers over some of the points to learn percisely when they were denoted. She 
+hovers over some of the points to learn precisely when they were denoted. She 
 clicks on one of them to bring up the general information panel. She learns 
 about how some of the places are called 'New' Berlin or how the mapmakers note 
-there is more directionally defined Berlins than other names (North,East,
-South,West). She clicks on the line chart to get the exact value of the peak 
+there is more directionally defined Berlins than other names (North, East,
+South, West). She clicks on the line chart to get the exact value of the peak 
 for her notes, and then decides to choose a few other of the names given to
-be representative evidence for her project arguement. 
+be representative evidence for her project's argument. 
 
 ---
 
@@ -122,7 +122,7 @@ between semantic relationships and spatial distributions.
 
 - Overview  
 
-The webstie begins with a global overview that presents the major origin 
+The website begins with a global overview that presents the major origin 
 regions and their connections to the United States. This allows users to 
 immediately grasp the large-scale structure of cultural diffusion and 
 identify dominant source regions.
@@ -149,7 +149,7 @@ as a spatial pattern but as a dynamic historical process.
 
  - Details-on-Demand  
 
-When users select individual locations, the webstie reveals detailed 
+When users select individual locations, the website reveals detailed 
 information about the place name, including its origin and interpretation. 
 This allows users to connect abstract patterns to specific examples 
 without cluttering the main visualization.
@@ -251,7 +251,7 @@ derived from embedding similarity.
 
 - Other Data 
 
-OSM street Network, Fousquare POIs, Building Footprint data, and Census data
+OSM street Network, Foursquare POIs, Building Footprint data, and Census data
 will be used as basemap.
 ---
 
